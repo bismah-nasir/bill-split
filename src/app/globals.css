@@ -1,0 +1,16 @@
+@import "tailwindcss";
+@import "../../design/tokens.css";
+
+@layer base {
+  html {
+    @apply bg-background;
+  }
+
+  body {
+    @apply bg-background text-ink type-body antialiased min-h-dvh;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary;
+  }
+}

@@ -1,0 +1,341 @@
+/**
+ * Design tokens — the single source of truth for every colour, size,
+ * spacing step, radius, shadow, font and motion value in the app.
+ */
+
+@theme static {
+  --*: initial;
+
+  /* ─── Colour ─────────────────────────────────────────────────────── */
+
+  /* Surfaces */
+  --color-background: #f7f9fc;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-surface-subtle: #f1f5ff;
+  --color-surface-muted: #e9eef7;
+
+  /* Brand — modern technology blue */
+  --color-primary: #4f46e5;
+  --color-primary-pressed: #4338ca;
+  --color-primary-soft: #e0e7ff;
+
+  /* Technology accents */
+  --color-accent-cyan: #06b6d4;
+  --color-accent-cyan-soft: #cffafe;
+
+  --color-accent-blue: #3b82f6;
+  --color-accent-blue-soft: #dbeafe;
+
+  --color-accent-purple: #8b5cf6;
+  --color-accent-purple-soft: #ede9fe;
+
+  --color-accent-violet: #7c3aed;
+  --color-accent-violet-soft: #ede9fe;
+
+  --color-accent-green: #10b981;
+  --color-accent-green-soft: #d1fae5;
+
+  --color-accent-yellow: #f59e0b;
+  --color-accent-yellow-soft: #fef3c7;
+
+  --color-accent-red: #ef4444;
+  --color-accent-red-soft: #fee2e2;
+
+  --color-accent-pink: #ec4899;
+  --color-accent-pink-soft: #fce7f3;
+
+  /* Deep technology / AI surfaces */
+  --color-accent-navy: #111827;
+  --color-accent-navy-soft: #1e293b;
+
+  /* Text */
+  --color-ink: #111827;
+  --color-ink-secondary: #475569;
+  --color-ink-muted: #94a3b8;
+  --color-ink-inverse: #ffffff;
+
+  /* Semantic */
+  --color-success: #10b981;
+  --color-success-soft: #d1fae5;
+
+  --color-error: #ef4444;
+  --color-error-soft: #fee2e2;
+
+  --color-warning: #f59e0b;
+  --color-warning-soft: #fef3c7;
+
+  /* Structural */
+  --color-line: color-mix(in srgb,
+      var(--color-ink) 8%,
+      transparent);
+
+  --color-line-strong: color-mix(in srgb,
+      var(--color-ink) 14%,
+      transparent);
+
+  --color-overlay: color-mix(in srgb,
+      var(--color-ink) 55%,
+      transparent);
+
+  /* Shadow tints */
+  --color-shadow: #0f172a;
+  --color-shadow-primary: #4f46e5;
+
+
+  /* ─── Spacing ────────────────────────────────────────────────────── */
+
+  --spacing-0: 0;
+  --spacing-2: 0.125rem;
+  --spacing-4: 0.25rem;
+  --spacing-6: 0.375rem;
+  --spacing-8: 0.5rem;
+  --spacing-10: 0.625rem;
+  --spacing-12: 0.75rem;
+  --spacing-14: 0.875rem;
+  --spacing-16: 1rem;
+  --spacing-20: 1.25rem;
+  --spacing-24: 1.5rem;
+  --spacing-28: 1.75rem;
+  --spacing-32: 2rem;
+  --spacing-40: 2.5rem;
+  --spacing-48: 3rem;
+  --spacing-56: 3.5rem;
+  --spacing-72: 4.5rem;
+  --spacing-96: 6rem;
+
+
+  /* ─── Component sizes ───────────────────────────────────────────── */
+
+  --spacing-control-lg: 3.75rem;
+  --spacing-control-md: 3.25rem;
+  --spacing-control-sm: 2.5rem;
+
+  --spacing-tap-sm: 2.125rem;
+  --spacing-tap: 2.625rem;
+  --spacing-tap-lg: 2.75rem;
+
+  --spacing-bubble: 3.5rem;
+
+  --spacing-avatar-xl: 5.5rem;
+
+  --spacing-icon-xs: 0.75rem;
+  --spacing-icon-sm: 0.875rem;
+  --spacing-icon-md: 1rem;
+  --spacing-icon-lg: 1.125rem;
+  --spacing-icon-xl: 1.25rem;
+  --spacing-icon-xxl: 1.625rem;
+
+  --border-width-hairline: 1px;
+  --border-width-base: 1.5px;
+
+
+  /* ─── Layout ─────────────────────────────────────────────────────── */
+
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+
+  --container-content: 48rem;
+
+
+  /* ─── Radius ─────────────────────────────────────────────────────── */
+
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
+  --radius-pill: 9999px;
+
+
+  /* ─── Shadow ─────────────────────────────────────────────────────── */
+
+  --shadow-subtle:
+    0 0.0625rem 0.25rem color-mix(in srgb, var(--color-shadow) 4%, transparent);
+
+  --shadow-card:
+    0 0.375rem 1rem color-mix(in srgb, var(--color-shadow) 8%, transparent);
+
+  --shadow-floating:
+    0 0.625rem 1.375rem color-mix(in srgb, var(--color-shadow-primary) 22%, transparent);
+
+  --shadow-raised:
+    0 -0.25rem 0.875rem color-mix(in srgb, var(--color-shadow) 6%, transparent);
+
+
+  /* ─── Fonts ──────────────────────────────────────────────────────── */
+
+  --font-display: var(--font-outfit), sans-serif;
+  --font-heading: var(--font-outfit), sans-serif;
+  --font-body: var(--font-plus-jakarta-sans), sans-serif;
+  --font-numeric: var(--font-outfit), sans-serif;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+
+  /* ─── Type ramp ──────────────────────────────────────────────────── */
+
+  --text-display: 3.5rem;
+  --text-display--line-height: 3.75rem;
+  --text-display--letter-spacing: -0.04rem;
+  --text-display--font-weight: var(--font-weight-bold);
+
+  --text-display-sm: 2.5rem;
+  --text-display-sm--line-height: 2.75rem;
+  --text-display-sm--letter-spacing: -0.03rem;
+  --text-display-sm--font-weight: var(--font-weight-bold);
+
+  --text-h1: 1.75rem;
+  --text-h1--line-height: 2.125rem;
+  --text-h1--letter-spacing: -0.02rem;
+  --text-h1--font-weight: var(--font-weight-bold);
+
+  --text-h2: 1.375rem;
+  --text-h2--line-height: 1.75rem;
+  --text-h2--letter-spacing: -0.01rem;
+  --text-h2--font-weight: var(--font-weight-bold);
+
+  --text-h3: 1.125rem;
+  --text-h3--line-height: 1.5rem;
+  --text-h3--font-weight: var(--font-weight-semibold);
+
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-body--font-weight: var(--font-weight-regular);
+
+  --text-body-medium: 1rem;
+  --text-body-medium--line-height: 1.5rem;
+  --text-body-medium--font-weight: var(--font-weight-medium);
+
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.25rem;
+  --text-body-sm--font-weight: var(--font-weight-regular);
+
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-caption--letter-spacing: 0.01875rem;
+  --text-caption--font-weight: var(--font-weight-medium);
+
+  --text-overline: 0.6875rem;
+  --text-overline--line-height: 0.875rem;
+  --text-overline--letter-spacing: 0.125rem;
+  --text-overline--font-weight: var(--font-weight-bold);
+
+  --text-button: 1.125rem;
+  --text-button--line-height: 1.375rem;
+  --text-button--letter-spacing: 0.025rem;
+  --text-button--font-weight: var(--font-weight-bold);
+
+  --text-button-sm: 0.875rem;
+  --text-button-sm--line-height: 1.125rem;
+  --text-button-sm--letter-spacing: 0.025rem;
+  --text-button-sm--font-weight: var(--font-weight-bold);
+
+  --text-numeric: 3rem;
+  --text-numeric--line-height: 3.25rem;
+  --text-numeric--font-weight: var(--font-weight-bold);
+
+  --text-numeric-lg: 4.5rem;
+  --text-numeric-lg--line-height: 4.75rem;
+  --text-numeric-lg--font-weight: var(--font-weight-bold);
+
+
+  /* ─── Motion ─────────────────────────────────────────────────────── */
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce-out: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --duration-fast: 160ms;
+  --duration-base: 240ms;
+  --duration-slow: 400ms;
+  --duration-xslow: 640ms;
+
+  --default-transition-duration: var(--duration-base);
+  --default-transition-timing-function: var(--ease-standard);
+}
+
+/* ─── Typography utilities ─────────────────────────────────────────── */
+/* One class per role: `<h1 className="type-h1">`. Colour is not baked
+   in — text inherits `ink` from the body; add `text-ink-secondary` etc.
+   where the role calls for it (body-sm → secondary, caption/overline →
+   muted, as on mobile). */
+
+@utility type-display {
+  @apply font-display text-display;
+}
+
+@utility type-display-sm {
+  @apply font-display text-display-sm;
+}
+
+@utility type-h1 {
+  @apply font-heading text-h1;
+}
+
+@utility type-h2 {
+  @apply font-heading text-h2;
+}
+
+@utility type-h3 {
+  @apply font-heading text-h3;
+}
+
+@utility type-body {
+  @apply font-body text-body;
+}
+
+@utility type-body-medium {
+  @apply font-body text-body-medium;
+}
+
+@utility type-body-sm {
+  @apply font-body text-body-sm;
+}
+
+@utility type-caption {
+  @apply font-body text-caption;
+}
+
+@utility type-overline {
+  @apply font-heading text-overline uppercase;
+}
+
+@utility type-button {
+  @apply font-heading text-button uppercase;
+}
+
+@utility type-button-sm {
+  @apply font-heading text-button-sm uppercase;
+}
+
+@utility type-numeric {
+  @apply font-numeric text-numeric;
+}
+
+@utility type-numeric-lg {
+  @apply font-numeric text-numeric-lg;
+}
+
+/* ─── Utilities for tokens Tailwind has no namespace for ───────────── */
+
+@utility duration-fast {
+  transition-duration: var(--duration-fast);
+}
+
+@utility duration-base {
+  transition-duration: var(--duration-base);
+}
+
+@utility duration-slow {
+  transition-duration: var(--duration-slow);
+}
+
+@utility duration-xslow {
+  transition-duration: var(--duration-xslow);
+}
