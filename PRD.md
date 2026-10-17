@@ -40,6 +40,7 @@ The MVP will not include:
 - Inventory management, stock counts, budgeting, recurring purchases, or automatic receipt scanning/OCR.
 - Global price sharing between unrelated accounts. Users only see price-history entries supported by bills they can access.
 - Multi-currency support in the MVP. Use Pakistani rupees (PKR / Rs.) initially.
+- Email verification, password reset, changing the account email, phone numbers, social sign-in, and two-factor authentication. The app never sends email.
 
 ## 5. Target Users and Main Scenarios
 
@@ -70,10 +71,12 @@ A user wants to know whether cooking oil or another grocery item costs more than
 ### 7.1 Account and Profile
 
 - Users must sign in to view any bill or price history.
-- A user's account should support a unique username and registered email address. A phone number may also be attached and verified.
+- Users sign up with **Name, Email, Password and Confirm password**, and sign in with email and password.
+- Each email address can belong to only one account. Passwords must be at least 8 characters, and Confirm password must match Password.
+- After signing up, a user chooses a unique username. Friends can find them by username or email.
+- Users can view and edit their name and username, and see their email.
 - Users must be able to sign out.
-- The application must never expose a user's private trips to unrelated users.
-- Authentication method and provider are implementation decisions to finalize during technical planning; do not build public/anonymous bill access.
+- The application must never expose a user's private trips to unrelated users. Do not build public or anonymous bill access.
 
 ### 7.2 Dashboard
 
@@ -146,7 +149,7 @@ The saved trip detail page should show the same information to authorized partic
 
 ### 7.7 Inviting Friends and Trip Access
 
-Users may invite friends who already have accounts using a registered email address, username, or verified phone number.
+Users may invite friends who already have accounts using their username or registered email address.
 
 - The owner selects an identifier and the person to invite.
 - The application must resolve the identifier to an existing account without exposing unnecessary profile or contact information.
@@ -157,8 +160,8 @@ Users may invite friends who already have accounts using a registered email addr
 - The owner can see pending, accepted, and declined invitation states.
 - The owner can cancel a pending invitation and remove a participant from a trip, with a clear confirmation when access will be revoked.
 - Removing a participant prevents future access to the trip. The user's other trips remain unaffected.
-- In-app invitation status is required. Email or SMS notifications may be added if a suitable provider is configured; do not claim an email/SMS was sent unless it actually was.
-- Email, username, and phone-number lookups must not reveal more account information than is necessary to complete the invitation.
+- In-app invitation status is required. The app does not send email or SMS notifications, and must never claim that one was sent.
+- Username and email lookups must not reveal more account information than is necessary to complete the invitation.
 
 **MVP permission model:** The trip owner can create, edit, and delete the trip, its items, and its participant list. Accepted participants can view the trip and its item/share breakdown but cannot edit or delete it. This keeps the first version simple and prevents conflicting edits. Shared editing can be considered later.
 
@@ -214,7 +217,7 @@ The purpose of price history is to help users see how recorded item prices chang
 
 ### Flow B: Create and share a bill
 1. User signs in and creates a trip.
-2. User invites one or more friends by their registered email, username, or verified phone number.
+2. User invites one or more friends by their username or registered email.
 3. The app records each invitation as pending.
 4. Each friend accepts or declines from their account.
 5. After acceptance, the friend can view the trip and its full breakdown.
@@ -236,14 +239,14 @@ The UI may allow the owner to prepare the bill before invitations are accepted, 
 
 ## 9. Main Screens
 
-1. **Sign In / Sign Up** — account access and any required profile setup.
+1. **Sign Up / Sign In** — sign up with name, email, password and confirm password; sign in with email and password; then choose a username.
 2. **Dashboard** — create-trip action, recent accessible trips, and clearly defined summary figures.
 3. **Create / Edit Trip** — trip details, participant invitations, item-entry list, assignments, and calculated totals.
 4. **Trip Details** — saved items, participants, bill total, each person's share, and invitation/access status for the owner.
 5. **Invitations** — received pending invitations and sent invitation statuses, with accept/decline/cancel actions as appropriate.
 6. **Bill History** — searchable and filterable list of owned and shared trips.
 7. **Price History** — product search and dated price observations with change comparisons.
-8. **Profile / Account Settings** — username and registered contact details, including verified status for phone numbers where applicable.
+8. **Profile / Account Settings** — name and username (editable) and email (read-only).
 
 Use a responsive, accessible interface with clear forms, readable totals, helpful validation, and useful empty/loading/error states. Avoid making users navigate through unnecessary steps to add items or see the split.
 
@@ -253,10 +256,11 @@ The final database design may change, but it must support the following logical 
 
 ### User
 - `id`
-- `username` (unique)
-- `email` (unique; verified status as supported by the authentication system)
-- `phone` (optional; unique and verified if used for account lookup)
-- `createdAt`, `updatedAt`
+- `name`
+- `email` (unique, stored lowercase)
+- `username` (unique, chosen after sign-up)
+- creation time
+- The password is held by the authentication system as a hash, never in the app's own user record.
 
 ### Trip / Bill
 - `id`
@@ -309,7 +313,8 @@ Privacy is a core product requirement, not an optional enhancement.
 - Pending, declined, cancelled, or removed participants must not access the trip.
 - Verify authorization on read, create, update, and delete operations, including requests using guessed IDs or modified URLs.
 - Validate that all item assignments reference eligible participants in the same trip.
-- Do not expose private email addresses or phone numbers to trip participants unless that information is explicitly needed and the product design permits it.
+- Do not expose users' email addresses or names to other users. Trip participants see each other's usernames only.
+- Store passwords only as secure hashes managed by the authentication system. Never log, store in app tables, or return a password.
 - Do not reveal another user's complete trip list, item catalogue, or item price history.
 - Protect authentication secrets and database credentials; never expose server-only secrets in frontend code.
 - Use safe input validation and appropriate error messages without returning sensitive backend details.
@@ -331,9 +336,9 @@ Privacy is a core product requirement, not an optional enhancement.
 
 The MVP is acceptable when all of the following work:
 
-1. A user can register/sign in and create a private bill.
+1. A user can register with name, email, password and confirm password, sign in with email and password, and create a private bill.
 2. A private bill is visible to its owner and is not visible to an unrelated signed-in user.
-3. A user can create a trip with multiple participants by inviting registered users with a supported identifier.
+3. A user can create a trip with multiple participants by inviting registered users by username or email.
 4. An invitation remains pending until the invited user accepts or declines it.
 5. An accepted participant can view the associated trip; a pending, declined, cancelled, or removed invitee cannot.
 6. The owner can add, edit, and delete items and assign each item to one or more eligible participants.
@@ -358,7 +363,8 @@ At minimum, test the following scenarios:
 - A total that does not divide evenly into paisa, confirming shares still add up exactly.
 - Editing an item in one trip without changing another trip's record of the same item.
 - An owner, an accepted participant, a pending invitee, a declined invitee, a removed participant, and an unrelated user trying to access a trip.
-- Invitation by username, email, and verified phone where each method is implemented.
+- Invitation by username and by email (both case-insensitive).
+- Sign-up validation: missing fields, invalid email, short password, mismatched confirm password, and an email that already has an account.
 - Duplicate invitations and invalid participant assignments.
 - Searching Bill History and Price History across owned and shared trips.
 - Product variants and units that should not be incorrectly compared as identical.
@@ -367,7 +373,7 @@ At minimum, test the following scenarios:
 ## 15. MVP Priorities
 
 ### P0 — Required for launch
-- Authentication and account identity.
+- Email-and-password authentication and account identity.
 - Private trips and owner-based access control.
 - Trip creation and item entry.
 - Item assignment and equal split calculation.
@@ -414,14 +420,14 @@ Use the preferred stack. It fits this product well and avoids operating a separa
 | Web framework | Next.js App Router | Pages, layouts, navigation, server-rendered shell, and deployment integration |
 | Styling | Tailwind CSS | Responsive layout and design tokens |
 | UI components | shadcn/ui, added selectively | Accessible dialogs, forms, tables, menus, sheets, badges, and other components that the app actually needs |
-| Authentication | Clerk | Sign-up/sign-in, sessions, account identity, and email/phone verification |
+| Authentication | Convex Auth (Password provider) | Email + password sign-up/sign-in, password hashing, sessions and account identity, running inside Convex |
 | Database and application backend | Convex | Persistent data, typed queries and mutations, reactive updates, validation, access control, and backend business logic |
 | Hosting | Vercel for Next.js; managed Convex deployment for backend/data | Minimal hosting and deployment infrastructure |
 | Optional icons | `lucide-react`, only if useful | Consistent interface icons |
 
 **Architecture decision:** Convex is the primary backend, not merely a database behind a separate API. Implement normal application reads and writes as Convex queries and mutations. Do not build duplicate CRUD endpoints in Next.js Route Handlers. Add a Next.js Route Handler only when a future integration genuinely requires a conventional HTTP endpoint and cannot sensibly be handled by a Convex function or HTTP Action.
 
-Do not add PostgreSQL, Prisma, a separate Express server, Redux, Redis, a message queue, a separate search service, or a second authentication system for the MVP. Use the current stable compatible versions of Next.js, Clerk, and Convex at implementation time; follow their official integration guides rather than pinning examples copied from an older tutorial.
+Do not add PostgreSQL, Prisma, a separate Express server, Redux, Redis, a message queue, a separate search service, any other authentication provider, or an email-sending service for the MVP. Use the current stable compatible versions of Next.js, Convex, and Convex Auth at implementation time; follow their official integration guides rather than pinning examples copied from an older tutorial.
 
 ### 18.2 Frontend Architecture
 
@@ -429,8 +435,8 @@ Use the Next.js **App Router** with TypeScript.
 
 - **Server Components by default:** Use them for route layouts, static page structure, and content that does not need browser interaction.
 - **Client Components where needed:** Use them for Convex reactive queries, item-entry forms, participant selection, invitation actions, live bill totals, filters, dialogs, and other interactive controls.
-- **Provider setup:** Wrap the application with Clerk's provider and Convex's Clerk-aware provider, following the current official Convex + Clerk setup for Next.js. Use one shared Convex client instance.
-- **Authentication UI:** Use Clerk's sign-in, sign-up, and account components where appropriate instead of building password/session management yourself.
+- **Provider setup:** Wrap the application with Convex Auth's Next.js providers, following the current official Convex Auth setup for Next.js. Use one shared Convex client instance.
+- **Authentication UI:** Build the sign-up form (Name, Email, Password, Confirm password) and sign-in form (Email, Password) from the app's own components. Password hashing and sessions are handled by Convex Auth; never implement them yourself.
 - **Form state:** Keep unsaved form state local to the relevant form. Use Convex query/mutation hooks for persisted data and live updates. Do not introduce a global state library unless a demonstrated requirement appears.
 - **Component boundaries:** Keep trip forms, item rows, participant selection, bill summaries, history filters, invitation lists, and price-history presentation in small, focused components. Do not create an abstraction for every individual field.
 - **UI library:** Add shadcn/ui components only as required. The generated components are part of the application code and can be customized; do not install a large component framework alongside them.
@@ -444,10 +450,10 @@ Keep application business logic in Convex. Organize the functions by feature rat
 
 - **Queries (read-only):** Current-user profile, dashboard/recent trips, paginated accessible bill history, trip detail, received/sent invitations, and authorized item price history.
 - **Mutations (writes):** Create/update/delete a trip, add/update/delete items, create/cancel/accept/decline invitations, update a username, and any other operation that changes persisted state.
-- **Actions / HTTP Actions:** Use only for genuine external service calls or incoming HTTP integrations. Clerk account synchronization can use a signed Clerk webhook received by a Convex HTTP Action; it does not require a separate app server.
+- **Actions / HTTP Actions:** Use only for genuine external service calls or incoming HTTP integrations. Convex Auth registers its own HTTP routes; the app needs no other HTTP endpoints.
 - **Shared backend helpers:** Keep reusable authentication, authorization, item normalization, and money-allocation helpers in `convex/lib/`. Avoid duplicating permission checks across individual functions.
 
-Every public query and mutation must derive the signed-in user from the verified Clerk identity (`ctx.auth`) and resolve that identity to the app's user record. Never accept a caller-supplied `userId` as proof of identity. Validate inputs with Convex argument validators and validate domain rules in the function itself.
+Every public query and mutation must derive the signed-in user from the Convex Auth identity (`getAuthUserId(ctx)`, which reads `ctx.auth`) and load the app's user record. Never accept a caller-supplied `userId` as proof of identity. Validate inputs with Convex argument validators and validate domain rules in the function itself.
 
 Create a small authorization helper such as `requireCurrentUser(ctx)` and reusable checks such as `requireTripViewer(ctx, tripId)` and `requireTripOwner(ctx, tripId)`. The authorization rules are:
 
@@ -459,13 +465,13 @@ Create a small authorization helper such as `requireCurrentUser(ctx)` and reusab
 
 A mutation that changes a trip's items should validate participants and assignments, calculate line totals and allocations, and write the consistent result atomically. Prefer Convex mutations' transaction behavior over multiple independent writes that could leave a partial bill.
 
-#### Clerk identity and invitation lookup
+#### Identity and invitation lookup
 
-Clerk is the source of truth for authentication and verified contact methods. The Convex `users` table stores only the minimal app profile and lookup fields needed by the product: Clerk user ID, username, normalized username, primary **verified** email lookup value where available, verified phone lookup value where available, and timestamps.
+Convex Auth is the source of truth for authentication. Its Password provider creates the `users` row at sign-up with the user's name and normalized (trimmed, lowercase) email, and keeps the password hash in its own tables. The normalized email is the account ID, so one email can have only one account. The `users` table stores only the minimal app profile and lookup fields: name, email, username and normalized username. The app's username is managed by the app and must be checked for uniqueness.
 
-Use a verified Clerk webhook (`user.created`, `user.updated`, and relevant deletion events) to keep verified email/phone lookup fields synchronized in Convex. Receive it through a Convex HTTP Action or another secured server endpoint, validate the webhook signature, and never trust an email/phone value merely because a browser submits it. The app's username is managed by the app and must be checked for uniqueness. Do not return a target user's private email or phone number when resolving an invitation.
+Validate sign-up input on the server as well as in the form: name 1–60 characters, valid email, password 8–128 characters. Confirm password is checked in the form only and never sent to the server. A failed sign-in returns one generic message that doesn't reveal whether the account exists. Keep Convex Auth's limit on failed sign-in attempts enabled.
 
-For an invitation, normalize the supplied identifier, perform an exact indexed lookup, create an invitation tied to the resolved user and one trip, and return only the minimum information required by the inviter. Prevent duplicates and avoid exposing a complete user directory. A phone-number invitation must work only when the target account has a verified phone number on record.
+For an invitation, normalize the supplied username or email, perform an exact indexed lookup, create an invitation tied to the resolved user and one trip, and return only the invitee's username. Prevent duplicates and avoid exposing a complete user directory. Emails aren't verified, so the inviter always sees the matched username and can cancel an invitation sent to the wrong person.
 
 ### 18.4 Data Storage and Schema Design
 
@@ -475,7 +481,7 @@ Recommended tables:
 
 | Table | Main fields | Purpose |
 |---|---|---|
-| `users` | `clerkUserId`, `username`, `usernameNormalized`, `verifiedEmailNormalized` (optional), `verifiedPhoneE164` (optional), `createdAt`, `updatedAt` | App profile and exact invitation lookup. Store only necessary account data. |
+| `users` | `name`, `email` (normalized), `username`, `usernameNormalized`, plus the optional fields Convex Auth requires | App profile and exact invitation lookup. Created by Convex Auth at sign-up. Store only necessary account data. |
 | `trips` | `ownerId`, `title`, `storeName`, `tripDate`, `category`, `currency`, `createdAt`, `updatedAt` | One independent bill per trip. Store `tripDate` as a date-only value such as `YYYY-MM-DD` to preserve the shopping date; use timestamps for audit fields. |
 | `tripParticipants` | `tripId`, `userId`, `role`, `status`, `invitedByUserId`, `createdAt`, `respondedAt` | Owner/participant relationship and pending/accepted/declined/cancelled/removed invitation state. The owner is always included as an accepted participant or otherwise receives equivalent explicit authorization. |
 | `items` | `tripId`, `name`, `normalizedName`, `brand`, `variant`, `packSize`, `unit`, `productMatchKey`, `quantity`, `unitPricePaisa`, `lineTotalPaisa`, timestamps | Original item records and their historical prices. An item row belongs to exactly one trip and must not be overwritten by a later purchase. |
@@ -493,7 +499,7 @@ Recommended tables:
 
 Define indexes in `convex/schema.ts` for the app's actual access patterns. At minimum, plan for:
 
-- `users`: by Clerk user ID, normalized username, verified normalized email, and verified phone number.
+- `users`: by email (index named `email`, required by Convex Auth) and by normalized username.
 - `trips`: by owner and trip date (and any additional compound index needed for the dashboard/history ordering).
 - `tripParticipants`: by trip + user, by user + status, and by trip + status.
 - `items`: by trip, by normalized item name, and by `productMatchKey` for comparable price-history lookups.
@@ -511,7 +517,7 @@ Use Convex's generated typed API and reactive query hooks (`useQuery`) for data 
 - **Trip detail:** Load the trip only after checking that the current user is its owner or an accepted participant. Then load items and assignment rows through trip/item indexes. Return only fields needed by that screen.
 - **Bill history:** Retrieve owned/shared trips from indexed owner/participant relationships. Paginate results instead of collecting an unlimited history. Apply date/category/owned-shared filters in the backend where practical. Title/store search can filter the authorized result set; never perform a global search and display unfiltered records.
 - **Invitation inbox:** Use the `tripParticipants` user + status index to retrieve invitations for the signed-in user. Use the trip + status index for the owner's sent-invitation view.
-- **Friend resolution:** Perform exact, indexed lookups by normalized username, verified email, or verified phone. Do not return a list of users or disclose the target's contact details.
+- **Friend resolution:** Perform exact, indexed lookups by normalized username or normalized email. Do not return a list of users or disclose the target's contact details.
 - **Price history:** Build a deterministic `productMatchKey` from normalized name and the relevant brand/variant/pack-size/unit fields. Retrieve matching item candidates using the index, then check trip authorization on the backend **before returning any observation**. Paginate results and never let inaccessible records influence returned counts, price comparisons, or charts. If later data volume makes this query expensive, add a user-scoped/materialized price-history index only after measuring a real performance issue; do not add that denormalization to the MVP.
 - **Search and filtering:** Prefer schema indexes for common filters and exact lookups. Do not query every table with `.collect()` for a dashboard or complete history. Keep result sizes bounded and add pagination for growing histories.
 - **Reactive updates:** Convex subscriptions can keep an open trip or invitation inbox current without manual polling or a separate WebSocket service.
@@ -529,8 +535,8 @@ project-root/
 │   │   ├── (public)/
 │   │   │   └── page.tsx
 │   │   ├── (auth)/
-│   │   │   ├── sign-in/[[...sign-in]]/page.tsx
-│   │   │   └── sign-up/[[...sign-up]]/page.tsx
+│   │   │   ├── sign-in/page.tsx
+│   │   │   └── sign-up/page.tsx
 │   │   ├── (app)/
 │   │   │   ├── layout.tsx
 │   │   │   ├── dashboard/page.tsx
@@ -559,8 +565,9 @@ project-root/
 │       └── money-format.ts            # display/format helpers; backend remains authoritative
 ├── convex/
 │   ├── schema.ts
+│   ├── auth.ts                        # Convex Auth: Password provider
 │   ├── auth.config.ts
-│   ├── http.ts                        # signed Clerk webhook if profile sync is used
+│   ├── http.ts                        # Convex Auth HTTP routes
 │   ├── users.ts
 │   ├── trips.ts
 │   ├── invitations.ts
@@ -582,9 +589,9 @@ project-root/
 └── README.md
 ```
 
-Use the file convention required by the installed Next.js major version for Clerk route middleware/proxy configuration (for example, `proxy.ts` or `middleware.ts` where applicable). Remember that route middleware is a navigation/session convenience, **not** the security boundary; Convex queries and mutations must independently enforce authorization.
+Use the file convention required by the installed Next.js major version for the Convex Auth route middleware/proxy (for example, `proxy.ts` or `middleware.ts` where applicable). Remember that route middleware is a navigation/session convenience, **not** the security boundary; Convex queries and mutations must independently enforce authorization.
 
-`src/app/api/` should not be created unless a real Next.js HTTP endpoint is required. For a Clerk webhook that updates the Convex user directory, a signed handler in `convex/http.ts` is sufficient and avoids an extra API layer. Generated `convex/_generated/` files must be managed by the Convex CLI, not edited manually.
+`src/app/api/` should not be created unless a real Next.js HTTP endpoint is required. Generated `convex/_generated/` files must be managed by the Convex CLI, not edited manually.
 
 ### 18.7 Environment Variables
 
@@ -595,14 +602,9 @@ Keep local secrets in `.env.local` and commit only placeholders in `.env.example
 ```dotenv
 # Public application configuration
 NEXT_PUBLIC_CONVEX_URL=https://<your-deployment>.convex.cloud
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_<provided-by-clerk>
-
-# Server-side Clerk SDK secret; never use a NEXT_PUBLIC_ prefix
-CLERK_SECRET_KEY=sk_test_<provided-by-clerk>
-
-# Optional: only if the app needs to construct absolute links
-NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
+
+There are no authentication variables in `.env.local`.
 
 The Convex CLI may add/manage `CONVEX_DEPLOYMENT` during local development. Keep the generated value as the CLI expects; do not invent a deployment URL or expose a deployment secret in client code.
 
@@ -611,19 +613,15 @@ The Convex CLI may add/manage `CONVEX_DEPLOYMENT` during local development. Keep
 Configure these in the relevant Convex deployment's environment settings, not in client-exposed variables:
 
 ```dotenv
-# Use the Clerk Frontend API / issuer domain specified by the current Convex + Clerk guide
-CLERK_JWT_ISSUER_DOMAIN=https://<your-clerk-frontend-api-domain>
+# The app's URL (http://localhost:3000 in development)
+SITE_URL=http://localhost:3000
 
-# Required only when the signed Clerk webhook is enabled for user/contact synchronization
-CLERK_WEBHOOK_SECRET=whsec_<provided-by-clerk>
+# Signing keys for Convex Auth sessions, generated by `npx @convex-dev/auth`
+JWT_PRIVATE_KEY=<generated>
+JWKS=<generated>
 ```
 
-Use separate development and production Clerk/Convex configuration. The issuer domain must match the Clerk instance for that environment. The webhook secret must match the configured Clerk webhook endpoint and must be verified before processing an event.
-
-#### Optional future variables — do not require for MVP
-
-- `RESEND_API_KEY` and an invitation sender address, only if email notifications are later approved and implemented.
-- An SMS provider key, only if SMS notifications are later approved and implemented. Verified phone lookup does not itself require sending SMS from this app when Clerk already handles verification.
+Use separate development and production Convex deployments, each with its own generated keys. Never reuse development keys in production.
 
 Do not add API keys for services the app does not use. Validate required environment configuration early and provide a clear setup error without printing secret values.
 
@@ -631,12 +629,12 @@ Do not add API keys for services the app does not use. Validate required environ
 
 1. Initialize or inspect the repository before changing it. Follow existing project instructions and avoid replacing working configuration without a reason.
 2. Set up the Next.js app, Tailwind CSS, and selected shadcn/ui components.
-3. Create the Clerk development instance and configure the official Clerk + Convex integration, including the issuer domain and provider setup.
+3. Create the Convex project with `npx convex dev`, then run `npx @convex-dev/auth` to set up Convex Auth's keys and site URL.
 4. Define the Convex schema and indexes before implementing feature queries and mutations.
 5. Implement and test money calculations and access-control helpers before building the full UI.
 6. Build the core flow in this order: profile/bootstrap, private trip creation, item assignment and exact splits, invitation acceptance and access rules, bill history, then price history.
 7. Run the app locally with the Next.js dev server and `npx convex dev`. Use the Convex CLI's production deploy workflow for release after tests pass.
-8. Deploy the Next.js app on Vercel and the backend through Convex. Configure production secrets separately; verify that production Clerk and Convex are paired with the correct issuer and deployment.
+8. Deploy the Next.js app on Vercel and the backend through Convex. Configure production secrets separately: generate production Convex Auth keys and set `SITE_URL` to the live URL.
 9. Test privacy with at least two independent accounts. Try direct URL access and direct query/mutation requests as an unrelated user, pending invitee, declined invitee, and removed participant.
 
 ### 18.9 Minimum Quality and Security Gates
@@ -645,7 +643,7 @@ Before considering the MVP production-ready:
 
 - Test the bill-splitting and rounding rules with unit tests, including a total that does not divide evenly in paisa.
 - Test all trip access states at the backend, not only through visible pages.
-- Test that invitation identifier lookup exposes no contact details and does not allow an unverified phone number to be used as a verified identifier.
+- Test that invitation lookup by username or email exposes no email address or name.
 - Test duplicate usernames, duplicate invitations, concurrent invitation attempts, invalid assignments, and owner deletion/editing behavior.
 - Test that editing or deleting one trip changes only that trip's item observations and participant access.
 - Check that list and price-history queries are paginated or bounded and that authorization is checked before data is returned.
@@ -658,7 +656,9 @@ Before considering the MVP production-ready:
 Use the current documentation during implementation because SDK conventions can change between major releases:
 
 - [Convex with Next.js App Router](https://docs.convex.dev/client/nextjs/app-router/)
-- [Convex + Clerk authentication](https://docs.convex.dev/auth/clerk)
+- [Convex Auth](https://labs.convex.dev/auth)
+- [Convex Auth with Next.js](https://labs.convex.dev/auth/authz/nextjs)
+- [Convex Auth passwords](https://labs.convex.dev/auth/config/passwords)
 - [Convex database indexes](https://docs.convex.dev/database/reading-data/indexes/)
 - [Next.js Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers)
 - [Next.js environment variables](https://nextjs.org/docs/app/guides/environment-variables)

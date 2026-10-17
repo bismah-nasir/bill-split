@@ -7,7 +7,7 @@
 - `tsconfig.json`: strict, aliases `@/*` and `@design/*`, includes `design/**/*.ts`.
 - `globals.css` imports `design/tokens.css` only; fonts via `fontVariables` on `<html>`.
 - shadcn/ui initialised (Radix base); its theme variables, dark variant and Geist font removed. `Button` rewritten to token variants (`primary|secondary|ghost|danger`, sizes `lg|md|sm|icon`, `asChild`).
-- ESLint guardrails: no inline style / hex / colour functions / arbitrary values; Convex only in `src/lib/db`, Clerk only in `src/lib/auth`; `src/domain` stays pure. Verified each rule fires.
+- ESLint guardrails: no inline style / hex / colour functions / arbitrary values; Convex only in `src/lib/db`, Convex Auth only in `src/lib/auth`; `src/domain` stays pure. Verified each rule fires.
 - Vitest (`unit` project); scripts `typecheck`, `lint`, `test`, `check`.
 - `src/domain/format.ts` (`formatPaisa`, `todayIsoDate`, `formatTripDate`) + 13 unit tests.
 - `PageContainer`, landing page at `src/app/(public)/page.tsx`.
@@ -25,5 +25,14 @@
 
 **Not yet done:** visual checks at 360 px and 1280 px (manual, in a browser).
 
+## Change (2026-10-17): Clerk replaced by Convex Auth
+By user decision, auth is now email + password through Convex Auth (sign-up: Name, Email, Password, Confirm password). No email/phone verification, no phone numbers, no webhook. `docs/BUILD_PLAN.md` updated; `PRD.md` is no longer used. Phase 0 files cleaned up: ESLint service rule now guards `@convex-dev/auth` (and `src/domain` bans `@convex-dev/*`), `.env.example` lists the Convex Auth deployment variables, README prerequisites updated.
+
+## Change (2026-10-17): smaller controls
+Buttons looked too large in the browser. Tokens changed: `control-lg/md/sm` 60/52/40px → 48/44/36px; `type-button` 18px bold uppercase → 16px semibold, normal case (`type-button-sm` 14px semibold, normal case).
+
+## Change (2026-10-17): Deep Teal colour theme
+Brand moved from indigo to Deep Teal (`primary` #0f766e, pressed #115e59, soft #d5f2ec) with green-grey neutrals. Contrast fixes: `ink-muted` #64746f (4.92:1), `success` #047857, `error` #b91c1c, `warning` #b45309, so all pass AA as text on white.
+
 ## Next: Phase 1 — Sign-up, sign-in, app shell and username onboarding
-Needs from you first: a Clerk app and keys, a Convex project (`npx convex dev`) and `CLERK_JWT_ISSUER_DOMAIN`.
+Needs from you first: a Convex project (`npx convex dev`, log in, create the project). After the packages are installed: `npx @convex-dev/auth` with site URL `http://localhost:3000`.

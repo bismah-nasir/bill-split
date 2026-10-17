@@ -17,10 +17,10 @@ const buttonVariants = cva(
         danger: "bg-error text-ink-inverse",
       },
       size: {
-        lg: "h-control-lg px-24 type-button rounded-lg",
-        md: "h-control-md px-20 type-button-sm rounded-md",
-        sm: "h-control-sm px-16 type-button-sm rounded-sm",
-        icon: "size-tap rounded-md",
+        lg: "h-control-lg px-28 type-button rounded-pill",
+        md: "h-control-md px-24 type-button-sm rounded-pill",
+        sm: "h-control-sm px-16 type-button-sm rounded-pill",
+        icon: "size-tap rounded-pill",
       },
     },
     defaultVariants: {

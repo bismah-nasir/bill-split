@@ -25,7 +25,7 @@ The plan is split into **phases**. Each phase is a **vertical slice**: it delive
 15. [Build phases](#15-build-phases)
     - [Phase 0 — Project setup and design-system foundation](#phase-0--project-setup-and-design-system-foundation)
     - [Phase 1 — Sign-up, sign-in, app shell and username onboarding](#phase-1--sign-up-sign-in-app-shell-and-username-onboarding)
-    - [Phase 2 — Profile and settings with verified contact sync](#phase-2--profile-and-settings-with-verified-contact-sync)
+    - [Phase 2 — Profile and settings](#phase-2--profile-and-settings)
     - [Phase 3 — Create and view a private bill; dashboard recent bills](#phase-3--create-and-view-a-private-bill-dashboard-recent-bills)
     - [Phase 4 — Edit and delete a saved bill](#phase-4--edit-and-delete-a-saved-bill)
     - [Phase 5 — Invitations and shared read access](#phase-5--invitations-and-shared-read-access)
@@ -46,7 +46,7 @@ The plan is split into **phases**. Each phase is a **vertical slice**: it delive
 
 1. **Record a bill.** Every shopping trip, grocery run or restaurant order is saved as its own independent **trip/bill**, with a date, store, category, items and prices.
 2. **Split it fairly by item.** Each item is assigned to one person, who pays all of it, or shared **equally** between several people. The app calculates each person's share exactly, to the paisa.
-3. **Share a bill only with the people involved.** The owner invites friends who already have accounts, by username, registered email or verified phone. A friend sees the bill only after accepting the invitation. Solo bills stay private.
+3. **Share a bill only with the people involved.** The owner invites friends who already have accounts, by username or registered email. A friend sees the bill only after accepting the invitation. Solo bills stay private.
 4. **Search past bills.** A searchable, filterable history of the bills you own and the bills shared with you.
 5. **Compare item prices over time.** Every saved item price is kept as a dated observation, so users can see how the price of, for example, a 1-litre cooking oil changed across dates and stores. Only bills the user is allowed to see are used.
 
@@ -76,7 +76,7 @@ The plan is split into **phases**. Each phase is a **vertical slice**: it delive
 
 ### 2.1 In scope (MVP, P0)
 
-- Authentication and account identity (Clerk), unique app username, verified email/phone lookup.
+- Email-and-password authentication (Convex Auth Password provider) with Name, Email, Password and Confirm password at sign-up, a unique app username, and exact email lookup for invitations.
 - Private trips with owner-based access control.
 - Trip creation and item entry.
 - Item assignment and an exact equal-split calculation.
@@ -104,6 +104,7 @@ The plan is split into **phases**. Each phase is a **vertical slice**: it delive
 - Multi-currency.
 - Editing by participants. Only the owner edits.
 - Email or SMS invitation notifications. Invitations are in-app only, and the UI must never claim an email or SMS was sent.
+- Email verification, password reset ("forgot password"), changing the account email, phone numbers, social/OAuth sign-in and two-factor authentication. The app never sends email.
 - **AI features.** The product has none. Do not add any LLM integration. (RULES.md §4 covers AI failure handling and applies only if an AI feature is approved later.)
 
 ---
@@ -132,9 +133,20 @@ Use **"Bill"** as the main word in the UI, with "trip" only where it reads natur
 ### 4.1 Accounts and profile
 
 - Every app screen and data request requires sign-in. Only the landing, sign-in and sign-up pages are public.
-- Sign-up/sign-in is handled by Clerk with email, plus an optional phone number. Clerk verifies the email and phone.
-- After first sign-in, the user picks a **unique app username** (onboarding). The app can't be used without one.
-- Users can view and edit their username in **Settings**, and see their verified email and verified phone. Email and phone are managed through Clerk's account UI.
+- Authentication is **email and password**, handled by Convex Auth's Password provider inside Convex. There is no third-party auth service, no email verification and no phone number.
+- **Sign-up** form (all fields required):
+
+  | Field | Rule |
+  |---|---|
+  | Name | 1–60 characters (trimmed). Shown only to the user themself (greeting, user menu, Settings), never to other users. |
+  | Email | A valid email address, stored trimmed and lowercase. If it already belongs to an account: "An account with this email already exists. Sign in instead." |
+  | Password | 8–128 characters. Hint: "At least 8 characters". |
+  | Confirm password | Must equal Password, otherwise "Passwords don't match". Checked in the browser only and never sent to the server. |
+
+- **Sign-in** form: Email and Password. A wrong email or password gives one generic message, "Email or password is incorrect.", which doesn't reveal whether the account exists.
+- Passwords are hashed by Convex Auth. App code never stores, logs or returns a password.
+- After sign-up, the user picks a **unique app username** (onboarding). The app can't be used without one. Friends invite them by username or email.
+- In **Settings**, users can edit their name and username and see their email (read-only).
 - Users can sign out.
 
 ### 4.2 Dashboard
@@ -206,10 +218,10 @@ On the saved bill page, an accepted participant sees everything except the owner
 
 ### 4.7 Invitations and access
 
-- The owner invites a person by **username**, **registered (verified) email** or **verified phone number**, from the bill page.
+- The owner invites a person by **username** or **registered email**, from the bill page. Emails aren't verified, so the success message always names the matched `@username`. The owner can cancel if it's the wrong person.
 - The identifier is normalized and matched **exactly** against an indexed field. No partial matching, no user directory, no listing of users.
-- A successful invitation creates a **pending** participant record tied to that one trip. The response contains only the invitee's username. It never contains their email or phone.
-- An unmatched lookup returns one generic message: "No account matches that {username/email/phone}. Ask your friend to sign up and finish setting up their account." Accounts without a username, deleted accounts and unverified contacts count as no match.
+- A successful invitation creates a **pending** participant record tied to that one trip. The response contains only the invitee's username. It never contains their email or name.
+- An unmatched lookup returns one generic message: "No account matches that {username/email}. Ask your friend to sign up and finish setting up their account." Accounts that haven't chosen a username yet count as no match.
 - Duplicate handling:
   - Already pending → error "Already invited".
   - Already accepted → error "Already a participant".
@@ -259,14 +271,15 @@ On the saved bill page, an accepted participant sees everything except the owner
 
 - Authentication is required for every private page **and** every Convex query and mutation.
 - **Authorization is enforced in Convex functions**, never only in the UI. Route protection in Next.js is for convenience only.
-- Every public Convex function derives the caller from `ctx.auth.getUserIdentity()` and never trusts a client-supplied user ID.
+- Every public Convex function derives the caller from Convex Auth's `getAuthUserId(ctx)` (which reads the verified `ctx.auth` identity) and never trusts a client-supplied user ID.
 - A trip is readable only by its owner and its **accepted** participants. Guessed or modified IDs fail safely. "Not found" and "no access" return the **same** response (`null` for queries, `NOT_FOUND` for mutations), so the API doesn't reveal whether a record exists.
 - Assignments are validated server-side against the trip's eligible participants.
-- Emails and phone numbers are never shown to other users. Participants see each other's usernames only.
+- Emails and names are never shown to other users. Participants see each other's usernames only.
 - No API returns a list of users, another user's trip list, item catalogue or price history.
-- Secrets (`CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`, deploy keys) are never in client code. Only `NEXT_PUBLIC_*` variables reach the browser.
+- Secrets (`JWT_PRIVATE_KEY`, deploy keys) live only in the Convex deployment and Vercel settings, never in client code or the repo. Only `NEXT_PUBLIC_*` variables reach the browser.
 - Error messages are friendly. No stack traces, tokens or internal IDs are shown to users.
-- The Clerk webhook signature is verified before any processing.
+- Passwords are handled only by Convex Auth (hashed, stored in its `authAccounts` table). Confirm password never leaves the browser. Convex Auth's built-in limit on failed sign-in attempts stays enabled.
+- Session tokens are kept in httpOnly cookies by Convex Auth's Next.js integration, not in `localStorage`.
 
 ### 5.2 Quality
 
@@ -308,9 +321,9 @@ These come from `RULES.md` at the repo root. Re-read that file if anything here 
 ### 6.3 External services in one place
 
 - All code that talks to an external service lives in **one folder per service**:
-  - `src/lib/db/` is the **only** frontend code that imports `convex/react`, `convex/react-clerk` or `convex/_generated/*`. It exports hooks such as `useRecentTrips()` and `useCreateTrip()` that return **plain app types** (IDs as `string`).
-  - `src/lib/auth/` is the **only** frontend code that imports `@clerk/*`. It exports the provider, components (`SignInView`, `SignUpView`, `AccountProfile`, `UserMenu`), hooks and the middleware factory.
-  - `convex/` is the backend for the Convex service. Clerk webhook parsing lives in `convex/lib/clerkWebhook.ts`.
+  - `src/lib/db/` is the **only** frontend code that imports `convex/react` or `convex/_generated/*`. It exports hooks such as `useRecentTrips()` and `useCreateTrip()` that return **plain app types** (IDs as `string`). The one exception: `src/lib/auth/hooks.ts` may use `useConvexAuth` from `convex/react` to read the sign-in status.
+  - `src/lib/auth/` is the **only** frontend code that imports `@convex-dev/auth/*`. It exports the providers, hooks (`useSignUp`, `useSignIn`, `useSignOut`, `useAuthStatus`), `toAuthError`, the server helper `isSignedIn()` and the middleware factory. The sign-in/sign-up **forms** are ordinary app components in `src/components/auth/` that use these hooks.
+  - `convex/` is the backend for the Convex service. Convex Auth is configured in `convex/auth.ts`.
 - Pages and components never import an SDK directly and never contain queries.
 - Environment variables are read only inside these folders.
 - ESLint `no-restricted-imports` enforces this (Phase 0/1).
@@ -318,7 +331,7 @@ These come from `RULES.md` at the repo root. Re-read that file if anything here 
 ### 6.4 Other principles
 
 - Use animation intentionally. Don't add unnecessary UI elements.
-- **Keep business logic separate from UI.** Money, splitting, normalization, validation and price-change logic live in `src/domain/` as pure TypeScript (no React, Next, Convex or Clerk imports). Both the UI (for live previews) and Convex (authoritative) import them. The PRD's suggested location of `convex/lib/money.ts` is replaced by `src/domain/money.ts` to satisfy RULES §3 and §5. Convex functions import domain code with **relative** paths (for example `../src/domain/money`).
+- **Keep business logic separate from UI.** Money, splitting, normalization, validation and price-change logic live in `src/domain/` as pure TypeScript (no React, Next, Convex or Convex Auth imports). Both the UI (for live previews) and Convex (authoritative) import them. The PRD's suggested location of `convex/lib/money.ts` is replaced by `src/domain/money.ts` to satisfy RULES §3 and §5. Convex functions import domain code with **relative** paths (for example `../src/domain/money`).
 
 ---
 
@@ -333,13 +346,12 @@ Use the **current stable** versions at implementation time, and follow the offic
 | Styling | Tailwind CSS v4 + `design/tokens.css` | Tokens only (see §6.1). |
 | UI primitives | shadcn/ui, **added selectively**: `button`, `dialog`, `alert-dialog`, `select`, `dropdown-menu`, `popover`, `command` | Generated code must be rewritten to use token classes. |
 | Icons | `lucide-react` | Sized with `size-icon-*`. |
-| Auth | Clerk (`@clerk/nextjs`) | Sign-up/in, sessions, email/phone verification, account UI. |
-| Backend + DB | Convex | Schema, queries, mutations, HTTP action for the Clerk webhook, reactive updates. |
-| Webhook verification | `svix` | Verifies Clerk webhook signatures inside the Convex HTTP action. |
+| Auth | Convex Auth (`@convex-dev/auth`, Password provider, plus its `@auth/core` peer dependency) | Email + password sign-up/sign-in, password hashing, sessions (httpOnly cookies via its Next.js integration). Runs inside Convex: no extra service, keys or webhook. Custom forms built from our components. |
+| Backend + DB | Convex | Schema, queries, mutations, Convex Auth's HTTP routes, reactive updates. |
 | Testing | Vitest, `convex-test`, `@edge-runtime/vm` | Unit tests for the domain, backend tests for functions and permissions. |
-| Hosting | Vercel (Next.js) + Convex cloud (backend) | Separate dev and prod Clerk/Convex instances. |
+| Hosting | Vercel (Next.js) + Convex cloud (backend) | Separate dev and prod Convex deployments, each with its own auth keys. |
 
-**Do not add:** PostgreSQL, Prisma, Express, Next.js API routes for CRUD, Redux/Zustand, Redis, queues, a search service, a second auth system, form libraries, zod (Convex validators plus domain validators are enough), date libraries, chart libraries (except optionally in Phase 12), or any AI SDK.
+**Do not add:** PostgreSQL, Prisma, Express, Next.js API routes for CRUD, Redux/Zustand, Redis, queues, a search service, any other auth provider or auth library (Clerk, Auth0, NextAuth, Lucia, …), an email-sending service, form libraries, zod (Convex validators plus domain validators are enough), date libraries, chart libraries (except optionally in Phase 12), or any AI SDK.
 
 ---
 
@@ -349,41 +361,43 @@ Use the **current stable** versions at implementation time, and follow the offic
 
 ```text
 Browser (Next.js client components)
-   │  useQuery / useMutation (via src/lib/db hooks)          Clerk UI (via src/lib/auth)
-   ▼                                                              │
-Convex (queries, mutations)  ◄── JWT from Clerk (ctx.auth) ───────┘
+   │  useQuery / useMutation (via src/lib/db hooks)
+   │  sign-up / sign-in / sign-out (via src/lib/auth hooks; session in httpOnly cookies)
+   ▼
+Next.js middleware/proxy (convexAuthNextjsMiddleware: route redirects + auth request proxy)
+   ▼
+Convex (queries, mutations, Convex Auth)
+   │  convex/auth.ts      → Password provider: hashing, sessions, JWT (ctx.auth)
    │  convex/lib/auth.ts  → requireCurrentUser / requireTripViewer / requireTripOwner
    │  src/domain/*        → money, normalization, validation (pure, shared)
    ▼
-Convex database (users, trips, tripParticipants, items, itemAssignments)
-   ▲
-Clerk webhook ─► convex/http.ts (svix-verified) ─► internal mutation users.upsertFromClerk
+Convex database (Convex Auth tables, users, trips, tripParticipants, items, itemAssignments)
 ```
 
-- **Convex is the whole backend.** All reads are Convex queries and all writes are Convex mutations. There are no Next.js route handlers (`src/app/api/` must not exist).
+- **Convex is the whole backend**, including authentication. All reads are Convex queries and all writes are Convex mutations. There are no Next.js route handlers (`src/app/api/` must not exist). Convex Auth registers its own HTTP routes in `convex/http.ts`.
 - **Mutations are transactions.** A save writes the trip, items and assignments atomically. Convex mutations are serializable, so "check, then insert" uniqueness checks (usernames, invitations) are race-safe. Concurrent conflicting writes are retried by Convex automatically.
-- **Next.js middleware/proxy** (Clerk) redirects signed-out users away from app routes. It is **not** the security boundary.
+- **Next.js middleware/proxy** (Convex Auth's `convexAuthNextjsMiddleware`) redirects signed-out users away from app routes, and signed-in users away from the sign-in/sign-up pages. It is **not** the security boundary.
 - **Reactivity:** Convex subscriptions keep the dashboard, a bill page and the invitations inbox live without polling.
 
 ### 8.2 Frontend architecture
 
-- `src/app/layout.tsx` (Server Component) sets fonts and global CSS and wraps the app in `AuthProvider` (Clerk) and then `DbProvider` (Convex with Clerk).
+- `src/app/layout.tsx` (Server Component) sets fonts and global CSS. `AuthServerProvider` (Convex Auth's `ConvexAuthNextjsServerProvider`) wraps `<html>`, and `AuthClientProvider` (`ConvexAuthNextjsProvider` with the single shared client from `src/lib/db/client.ts`) wraps the body content. This one provider gives both Convex data and auth, so there is no separate `DbProvider`.
 - Route groups:
   - `(public)`: landing.
   - `(auth)`: sign-in and sign-up.
   - `(onboarding)`: username setup.
   - `(app)`: everything behind the app shell.
-- `(app)/layout.tsx` renders `AppShell` (header, desktop nav, mobile bottom nav, user menu) and `AccountGate`. `AccountGate` makes sure the Convex user row exists and redirects to `/onboarding` if the user has no username.
+- `(app)/layout.tsx` renders `AppShell` (header, desktop nav, mobile bottom nav, user menu) and `AccountGate`. `AccountGate` waits for the current user (the row is created by Convex Auth at sign-up) and redirects to `/onboarding` if the user has no username.
 - Pages are thin Server Components that read `params`/`searchParams` (both are Promises in current Next.js, so `await` them) and render a client component that calls `src/lib/db` hooks.
 - Form state is local `useState`/`useReducer` in the form component. There is no global store.
 - Client-side calculations exist only for **preview**. The server always re-parses, re-validates and recomputes.
 
 ### 8.3 Backend architecture
 
-- Functions are organised by feature: `users.ts`, `trips.ts`, `invitations.ts`, `items.ts`, `priceHistory.ts`, `http.ts`.
+- Functions are organised by feature: `auth.ts` (Convex Auth config), `users.ts`, `trips.ts`, `invitations.ts`, `items.ts`, `priceHistory.ts`, `http.ts` (Convex Auth routes only).
 - Shared backend helpers live in `convex/lib/`:
   - `auth.ts`:
-    - `getCurrentUser(ctx)` returns the user row or `null`.
+    - `getCurrentUser(ctx)` returns the user row or `null`, using `getAuthUserId(ctx)` then `ctx.db.get`.
     - `requireCurrentUser(ctx)` throws `UNAUTHENTICATED`.
     - `requireOnboardedUser(ctx)` throws `ONBOARDING_REQUIRED` if there is no username.
     - `getTripAccess(ctx, tripId, userId)` returns `{ trip, role: "owner" | "participant" } | null`.
@@ -392,7 +406,6 @@ Clerk webhook ─► convex/http.ts (svix-verified) ─► internal mutation use
   - `tripWrite.ts`: shared create/update logic. It parses, validates, computes and writes items and assignments, recomputes `totalPaisa`, `itemCount` and `searchText`, and handles reassignment on participant removal.
   - `readModels.ts`: builds `TripCard` and `TripDetail` response objects and returns only the fields the screen needs.
   - `errors.ts`: `appError(code, message, fieldErrors?)` returns a `ConvexError`.
-  - `clerkWebhook.ts`: maps a Clerk user payload to `{ clerkUserId, verifiedEmailNormalized?, verifiedPhoneE164? }`.
 - Every public function validates `args` with Convex validators **and** domain rules.
 - Trip IDs arriving from URLs are accepted as `v.string()` and converted with `ctx.db.normalizeId("trips", id)`. A malformed ID returns `null` or `NOT_FOUND`, never a crash.
 
@@ -426,6 +439,8 @@ Backend errors are `ConvexError({ code, message, fieldErrors? })`. The codes liv
 
 `src/lib/db/errors.ts` exports `toAppError(error)`. It returns `{ code, message, fieldErrors }`, and for unknown errors falls back to `{ code: "UNKNOWN", message: "Something went wrong. Please try again." }`.
 
+Sign-up and sign-in errors come from Convex Auth, not from our functions. `src/lib/auth/errors.ts` exports `toAuthError(error, flow)`, which maps them to the messages in §4.1 (see Phase 1).
+
 ### 8.5 Folder structure (target)
 
 ```text
@@ -436,8 +451,9 @@ project-root/
 ├── docs/BUILD_PLAN.md
 ├── convex/
 │   ├── schema.ts
+│   ├── auth.ts                     # Convex Auth: Password provider
 │   ├── auth.config.ts
-│   ├── http.ts                     # Clerk webhook (svix-verified)
+│   ├── http.ts                     # Convex Auth HTTP routes only
 │   ├── users.ts
 │   ├── trips.ts
 │   ├── invitations.ts
@@ -448,8 +464,7 @@ project-root/
 │   │   ├── access.ts
 │   │   ├── tripWrite.ts
 │   │   ├── readModels.ts
-│   │   ├── errors.ts
-│   │   └── clerkWebhook.ts
+│   │   └── errors.ts
 │   └── _generated/                 # Convex CLI output — never edit
 ├── src/
 │   ├── proxy.ts                    # or middleware.ts, per installed Next.js major
@@ -458,8 +473,8 @@ project-root/
 │   │   ├── globals.css
 │   │   ├── not-found.tsx
 │   │   ├── (public)/page.tsx
-│   │   ├── (auth)/sign-in/[[...sign-in]]/page.tsx
-│   │   ├── (auth)/sign-up/[[...sign-up]]/page.tsx
+│   │   ├── (auth)/sign-in/page.tsx
+│   │   ├── (auth)/sign-up/page.tsx
 │   │   ├── (onboarding)/onboarding/page.tsx
 │   │   └── (app)/
 │   │       ├── layout.tsx
@@ -476,7 +491,8 @@ project-root/
 │   │   ├── ui/          # button, text-field, select, dialog, confirm-dialog, badge, card,
 │   │   │                # empty-state, error-state, loading-state, alert, segmented-control,
 │   │   │                # search-input, money-text
-│   │   ├── layout/      # app-shell, nav-link, page-header, page-container
+│   │   ├── layout/      # app-shell, nav-link, page-header, page-container, user-menu
+│   │   ├── auth/        # sign-up-form, sign-in-form
 │   │   ├── trips/       # trip-form, item-editor, item-row, participant-picker,
 │   │   │                # trip-summary, participant-shares, trip-card, participant-list,
 │   │   │                # invite-dialog, item-name-combobox
@@ -484,10 +500,11 @@ project-root/
 │   │   ├── invitations/ # invitation-list
 │   │   ├── price-history/ # product-search, price-history-list, price-change
 │   │   └── dashboard/   # spending-summary
-│   ├── domain/          # PURE TS — no react/next/convex/clerk imports
+│   ├── domain/          # PURE TS — no react/next/convex/auth imports
 │   │   ├── money.ts
 │   │   ├── format.ts
 │   │   ├── normalization.ts
+│   │   ├── auth-validation.ts
 │   │   ├── trip-validation.ts
 │   │   ├── price-change.ts
 │   │   ├── categories.ts
@@ -497,19 +514,18 @@ project-root/
 │       ├── utils.ts                 # cn()
 │       ├── db/                      # ONLY place importing convex client/_generated
 │       │   ├── client.ts            # ConvexReactClient + env check
-│       │   ├── provider.tsx         # ConvexProviderWithClerk
 │       │   ├── ids.ts               # string <-> Id<> casts
 │       │   ├── errors.ts            # toAppError
 │       │   ├── users.ts
 │       │   ├── trips.ts
 │       │   ├── invitations.ts
 │       │   └── price-history.ts
-│       └── auth/                    # ONLY place importing @clerk/*
-│           ├── provider.tsx
-│           ├── components.tsx
-│           ├── hooks.ts
-│           ├── server.ts
-│           └── middleware.ts
+│       └── auth/                    # ONLY place importing @convex-dev/auth/*
+│           ├── provider.tsx         # AuthServerProvider, AuthClientProvider
+│           ├── hooks.ts             # useSignUp, useSignIn, useSignOut, useAuthStatus
+│           ├── errors.ts            # toAuthError
+│           ├── server.ts            # isSignedIn()
+│           └── middleware.ts        # createAuthMiddleware()
 ├── tests/
 │   ├── unit/            # domain tests (node env)
 │   └── convex/          # convex-test backend tests (edge-runtime env)
@@ -530,24 +546,21 @@ project-root/
 # Convex (written by `npx convex dev`; keep as the CLI writes it)
 CONVEX_DEPLOYMENT=dev:<generated>
 NEXT_PUBLIC_CONVEX_URL=https://<deployment>.convex.cloud
-
-# Clerk
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_<from-clerk>
-CLERK_SECRET_KEY=sk_test_<from-clerk>
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/dashboard
-NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/onboarding
 ```
 
-Convex deployment environment (set with `npx convex env set NAME value`, **never** in `.env.local`):
+There are no auth variables in `.env.local`.
+
+Convex deployment environment (set by `npx @convex-dev/auth` or `npx convex env set NAME value`, **never** in `.env.local` or the repo):
 
 ```dotenv
-CLERK_JWT_ISSUER_DOMAIN=https://<your-clerk-frontend-api-domain>   # Phase 1
-CLERK_WEBHOOK_SECRET=whsec_<from-clerk-webhook-endpoint>            # Phase 2
+SITE_URL=http://localhost:3000        # Phase 1; the app's URL (production URL in Phase 11)
+JWT_PRIVATE_KEY=<generated>           # Phase 1; generated by `npx @convex-dev/auth`
+JWKS=<generated>                      # Phase 1; generated by `npx @convex-dev/auth`
 ```
 
-`src/lib/db/client.ts` throws a clear error naming the variable (`"NEXT_PUBLIC_CONVEX_URL is not set. Run npx convex dev."`) if a required value is missing. It never prints the values themselves. Production uses separate Clerk and Convex instances (Phase 11).
+`CONVEX_SITE_URL`, used in `convex/auth.config.ts`, is built into Convex and doesn't need setting.
+
+`src/lib/db/client.ts` throws a clear error naming the variable (`"NEXT_PUBLIC_CONVEX_URL is not set. Run npx convex dev."`) if a required value is missing. It never prints the values themselves. Production uses a separate Convex deployment with its own auth keys (Phase 11).
 
 ---
 
@@ -559,6 +572,7 @@ This is the **final** schema. Each phase adds the tables it needs (marked). All 
 // convex/schema.ts
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { authTables } from "@convex-dev/auth/server";
 
 export const categoryValidator = v.union(
   v.literal("grocery"), v.literal("restaurant"), v.literal("shopping"), v.literal("other"),
@@ -569,21 +583,24 @@ export const participantStatusValidator = v.union(
 );
 
 export default defineSchema({
-  // Phase 1 (lookup fields filled in Phase 2)
+  // Phase 1. Convex Auth's own tables (authAccounts holds the password hash, plus sessions,
+  // refresh tokens, rate limits). App code never reads or writes them directly.
+  ...authTables,
+
+  // Phase 1. Replaces Convex Auth's default `users` table. The row is created by Convex Auth at sign-up
+  // from the Password provider's profile(). Keep the optional fields Convex Auth writes; check the current
+  // Convex Auth schema docs. Row creation time is the built-in `_creationTime`.
   users: defineTable({
-    clerkUserId: v.string(),
-    username: v.optional(v.string()),              // as typed by the user
+    name: v.optional(v.string()),                  // from sign-up, 1–60 chars; always set in practice
+    email: v.optional(v.string()),                 // trimmed + lowercase (normalized in profile()); always set in practice
+    emailVerificationTime: v.optional(v.number()), // Convex Auth field; unused (no verification)
+    image: v.optional(v.string()),                 // Convex Auth field; unused
+    isAnonymous: v.optional(v.boolean()),          // Convex Auth field; unused
+    username: v.optional(v.string()),              // as typed by the user (onboarding)
     usernameNormalized: v.optional(v.string()),    // lowercase, used for uniqueness/lookup
-    verifiedEmailNormalized: v.optional(v.string()),
-    verifiedPhoneE164: v.optional(v.string()),     // only stored when verified in Clerk
-    deletedAt: v.optional(v.number()),             // set by user.deleted webhook
-    createdAt: v.number(),
-    updatedAt: v.number(),
   })
-    .index("by_clerkUserId", ["clerkUserId"])
-    .index("by_usernameNormalized", ["usernameNormalized"])
-    .index("by_verifiedEmail", ["verifiedEmailNormalized"])
-    .index("by_verifiedPhone", ["verifiedPhoneE164"]),
+    .index("email", ["email"])                     // name required by Convex Auth; also used for invite-by-email
+    .index("by_usernameNormalized", ["usernameNormalized"]),
 
   // Phase 3
   trips: defineTable({
@@ -607,7 +624,7 @@ export default defineSchema({
     role: v.union(v.literal("owner"), v.literal("participant")),
     status: participantStatusValidator,
     invitedByUserId: v.id("users"),
-    invitedVia: v.optional(v.union(v.literal("username"), v.literal("email"), v.literal("phone"))),
+    invitedVia: v.optional(v.union(v.literal("username"), v.literal("email"))),
     // NOTE: the raw identifier typed by the inviter is NOT stored (data minimisation).
     createdAt: v.number(),
     respondedAt: v.optional(v.number()),
@@ -657,7 +674,7 @@ export default defineSchema({
 3. `trip.totalPaisa = Σ items.lineTotalPaisa`.
 4. For each item, `Σ itemAssignments.allocatedAmountPaisa = item.lineTotalPaisa`, with ≥ 1 assignment.
 5. Every assignment's `userId` has an accepted participant row on the same trip.
-6. `usernameNormalized`, `verifiedEmailNormalized` and `verifiedPhoneE164` are unique across non-deleted users. Usernames are checked in `setUsername`. Email and phone come from Clerk, which guarantees uniqueness per instance. On a conflict the webhook clears the field from the older row.
+6. `usernameNormalized` and `email` are unique across users. Usernames are checked in `setUsername`. Email uniqueness is enforced by Convex Auth: the Password provider uses the normalized email as the account ID, so a second sign-up with the same email (in any letter case) fails.
 7. Deleting a trip deletes all of its participants, items and assignments in the same mutation, leaving no orphans.
 
 ---
@@ -717,12 +734,7 @@ export function computeBill(items: BillItemInput[]): ComputedBill;
 - `normalizeText(s)`: NFKC, lowercase, trim, collapse internal whitespace to a single space.
 - `normalizeUsername(s)` is `normalizeText` with no spaces. `isValidUsername(s)` checks `/^[a-z][a-z0-9_]{2,19}$/` on the normalized value (3–20 characters, starts with a letter).
 - `normalizeEmail(s)`: trim + lowercase.
-- `normalizePhone(s): string | null`:
-  1. Strip spaces, `-`, `(` and `)`.
-  2. A leading `00` becomes `+`.
-  3. A leading `0` followed by 10 digits (Pakistan local, for example `03001234567`) becomes `+92` + the last 10 digits.
-  4. A bare 10-digit number starting with `3` becomes `+92` + the number.
-  5. The result must match `/^\+[1-9]\d{7,14}$/`, otherwise return `null`.
+- `isValidEmail(s)`: the normalized value is at most 254 characters and matches `/^[^\s@]+@[^\s@]+\.[^\s@]+$/`. This is deliberately simple; there is no verification.
 - `normalizeUnit(s)` maps synonyms after `normalizeText`:
   - `l, ltr, litre, liter, litres, liters` → `l`
   - `ml, millilitre, milliliter` → `ml`
@@ -771,7 +783,34 @@ export function computePriceChanges(pricesPaisa: number[]): PriceChange[];
 
 - `CATEGORIES = [{ value: "grocery", label: "Grocery" }, { value: "restaurant", label: "Restaurant" }, { value: "shopping", label: "Shopping" }, { value: "other", label: "Other" }] as const`.
 - `ERROR_CODES` (§8.4).
-- App types such as `CurrentUser`, `TripCard`, `TripDetail`, `InvitationReceived`, `InvitationSent`, `ProductResult`, `PriceObservation` and `SpendingSummary`, with IDs as `string`. The response shapes are in §11.
+- App types such as `CurrentUser` (`{ id, name, email, username: string | null }`), `TripCard`, `TripDetail`, `InvitationReceived`, `InvitationSent`, `ProductResult`, `PriceObservation` and `SpendingSummary`, with IDs as `string`. The response shapes are in §11.
+
+### 10.7 `auth-validation.ts`
+
+Used by the sign-up/sign-in forms (instant inline errors) and by `convex/auth.ts` (authoritative server checks).
+
+```ts
+export type SignUpInput = { name: string; email: string; password: string; confirmPassword: string };
+export type SignInInput = { email: string; password: string };
+type FieldErrors<T> = Partial<Record<keyof T, string>>;
+
+export function validateName(input: string): Result<string>;      // trimmed, 1–60 chars
+export function isValidPassword(input: string): boolean;          // 8–128 chars, not trimmed
+export function validateSignUp(input: SignUpInput):
+  | { ok: true; value: { name: string; email: string; password: string } } // email normalized; no confirmPassword
+  | { ok: false; fieldErrors: FieldErrors<SignUpInput> };
+export function validateSignIn(input: SignInInput):
+  | { ok: true; value: { email: string; password: string } }
+  | { ok: false; fieldErrors: FieldErrors<SignInInput> };
+```
+
+| Field | Messages |
+|---|---|
+| `name` | "Enter your name", "Name must be 60 characters or fewer" |
+| `email` | "Enter your email", "Enter a valid email address" |
+| `password` (sign-up) | "Enter a password", "Password must be at least 8 characters", "Password must be 128 characters or fewer" |
+| `confirmPassword` | "Confirm your password", "Passwords don't match" |
+| sign-in | Presence checks only: "Enter your email", "Enter your password". Sign-in never shows password rules. |
 
 ---
 
@@ -783,22 +822,27 @@ Every public function starts with an auth helper. "Viewer" means owner or accept
 
 | Function | Type | Args | Returns / behaviour |
 |---|---|---|---|
-| `getCurrent` | query | — | `null` if unauthenticated or there is no row yet. Otherwise `{ id, username: string \| null, verifiedEmail: string \| null, verifiedPhone: string \| null }`. Only the caller's own data. |
-| `ensureCurrent` | mutation | — | Creates the row for `identity.subject` if missing. Idempotent. Returns `id`. |
+| `getCurrent` | query | — | `null` if unauthenticated. Otherwise `{ id, name, email, username: string \| null }`. Only the caller's own data. |
 | `isUsernameAvailable` | query | `{ username: string }` | `{ valid: boolean, available: boolean }`. Reveals nothing else. |
 | `setUsername` | mutation | `{ username: string }` | Validates and normalizes, checks `by_usernameNormalized` (ignoring the caller's own row), patches. Errors: `USERNAME_INVALID`, `USERNAME_TAKEN`. |
-| `upsertFromClerk` | **internal** mutation | `{ clerkUserId, verifiedEmailNormalized?, verifiedPhoneE164? }` | Upserts by `clerkUserId`, sets or clears the lookup fields, and clears the same email/phone from any other row (conflict rule). |
-| `markDeletedFromClerk` | **internal** mutation | `{ clerkUserId }` | Sets `deletedAt` and clears the email, phone and username lookup fields, so the user can't be invited. Trips stay; their username shows as "Deleted user". |
+| `updateName` | mutation | `{ name: string }` | Phase 2. `requireCurrentUser`, `validateName`, patch. Error: `VALIDATION` with `fieldErrors.name`. |
 
-### 11.2 `http.ts`
+There is no "create user" function: Convex Auth creates the `users` row at sign-up.
 
-- `POST /clerk-users-webhook`:
-  1. Read the raw body and the `svix-id`, `svix-timestamp` and `svix-signature` headers.
-  2. Verify with `new Webhook(process.env.CLERK_WEBHOOK_SECRET).verify(body, headers)`. On failure, return 400 and process nothing.
-  3. Handle `user.created` and `user.updated` by running `clerkWebhook.ts`'s mapping (the primary email if its `verification.status === "verified"`, else the first verified email; the same for phone), then `internal.users.upsertFromClerk`.
-  4. Handle `user.deleted` with `internal.users.markDeletedFromClerk`.
-  5. Ignore other event types and return 200.
-- If `svix` doesn't work in the default Convex runtime, move verification into an `internalAction` in a `"use node"` file and call it from the HTTP action.
+### 11.2 `auth.ts`, `auth.config.ts` and `http.ts` (Convex Auth)
+
+- `convex/auth.ts`:
+  ```ts
+  export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
+    providers: [Password({ profile, validatePasswordRequirements })],
+  });
+  ```
+  - `profile(params)`: `email = normalizeEmail(params.email)`, which must pass `isValidEmail`. For the `signUp` flow, `validateName(params.name)` must pass and it returns `{ email, name }`. For other flows it returns `{ email }`. On failure it throws `appError("VALIDATION", …, { email | name: message })`. Any other params (there shouldn't be any) are ignored.
+  - `validatePasswordRequirements(password)`: throws `appError("VALIDATION", …, { password: … })` unless `isValidPassword(password)`.
+  - Keep Convex Auth's default limit on failed sign-in attempts.
+  - Follow the current Convex Auth docs for the exact option names and import paths (`@convex-dev/auth/server`, `@convex-dev/auth/providers/Password`).
+- `convex/auth.config.ts`: `providers: [{ domain: process.env.CONVEX_SITE_URL, applicationID: "convex" }]`.
+- `convex/http.ts`: `const http = httpRouter(); auth.addHttpRoutes(http); export default http;`. There are no other routes.
 
 ### 11.3 `trips.ts`
 
@@ -841,7 +885,7 @@ type TripDetail = {
 
 | Function | Type | Args | Behaviour |
 |---|---|---|---|
-| `invite` | mutation | `{ tripId: v.string(), via: "username"\|"email"\|"phone", identifier: v.string() }` | `requireTripOwner`. Normalize by type (an invalid format gives `INVITE_NO_MATCH` with no format hint for email; a phone that doesn't normalize gives `VALIDATION` "Enter a valid phone number"). Exact index lookup on `by_usernameNormalized`, `by_verifiedEmail` or `by_verifiedPhone`. No match, `deletedAt` set or no username → `INVITE_NO_MATCH`. Self → `INVITE_SELF`. Existing row: pending → `INVITE_ALREADY_PENDING`; accepted → `INVITE_ALREADY_PARTICIPANT`; declined/cancelled/removed → patch to `pending` (new `createdAt`, clear `respondedAt`, set `invitedVia`). Otherwise check the limit (`TRIP_PARTICIPANT_LIMIT`) and insert a `participant`/`pending` row. Returns `{ participantId, username }` only. |
+| `invite` | mutation | `{ tripId: v.string(), via: "username"\|"email", identifier: v.string() }` | `requireTripOwner`. Normalize by type (`normalizeUsername` / `normalizeEmail`; an invalid format gives `INVITE_NO_MATCH` with no format hint). Exact index lookup on `by_usernameNormalized` or `email`. No match or no username → `INVITE_NO_MATCH`. Self → `INVITE_SELF`. Existing row: pending → `INVITE_ALREADY_PENDING`; accepted → `INVITE_ALREADY_PARTICIPANT`; declined/cancelled/removed → patch to `pending` (new `createdAt`, clear `respondedAt`, set `invitedVia`). Otherwise check the limit (`TRIP_PARTICIPANT_LIMIT`) and insert a `participant`/`pending` row. Returns `{ participantId, username }` only. |
 | `listReceived` | query | — | The caller's `by_user_status = pending` rows (take 50) → `{ participantId, tripTitle, storeName, tripDate, ownerUsername, invitedAt }[]`. No items or totals. |
 | `pendingCount` | query | — | Number of pending received invitations (take 51; the UI shows "50+"). Used by the nav badge. |
 | `listSent` | query | — | Rows where `invitedByUserId = me`, status pending, accepted or declined, newest first, take 50 → `{ participantId, tripId, tripTitle, username, status, invitedAt, respondedAt }[]`. Excludes the owner's own rows. |
@@ -866,7 +910,7 @@ Both functions share one internal helper, `collectAccessibleItems(ctx, userId, c
 ### 12.1 Navigation
 
 - **Mobile (< md):** a sticky top header (app name, user menu) and a fixed bottom nav: **Home**, **Bills**, **Prices** and **Invites** (with a pending-count badge). Each item is ≥ `size-tap`. Add `pb` space so content clears the nav.
-- **Desktop (≥ md):** a top header with the logo, inline nav links and the user menu (username, Settings, Sign out). Content is centred with `max-w-content` (forms and details), or wider (`lg`) for history tables if needed.
+- **Desktop (≥ md):** a top header with the logo, inline nav links and the user menu (name and @username, Settings, Sign out). Content is centred with `max-w-content` (forms and details), or wider (`lg`) for history tables if needed.
 - Nav entries are added only in the phase that ships their page.
 
 ### 12.2 Screen list
@@ -874,16 +918,17 @@ Both functions share one internal helper, `collectAccessibleItems(ctx, userId, c
 | Route | Screen | Key content |
 |---|---|---|
 | `/` | Landing | Short value proposition (3 bullets), Sign up / Sign in. Signed-in users are redirected to `/dashboard`. |
-| `/sign-in`, `/sign-up` | Clerk components | Centred card, app styling via `appearance` with `var(--color-…)` values. |
+| `/sign-up` | Sign up | Centred card: **Name**, **Email**, **Password**, **Confirm password**, a **Create account** button, and "Already have an account? Sign in". |
+| `/sign-in` | Sign in | Centred card: **Email**, **Password**, a **Sign in** button, and "New here? Create an account". |
 | `/onboarding` | Choose username | A single field with a live availability check (debounced 400 ms), rules hint and Continue. |
-| `/dashboard` | Dashboard | Greeting `Hi, @username`, a **New bill** button, recent bills (5), links to Bill History and Price History, and (Phase 10) the spending summary. |
+| `/dashboard` | Dashboard | Greeting `Hi, {name}`, a **New bill** button, recent bills (5), links to Bill History and Price History, and (Phase 10) the spending summary. |
 | `/trips/new` | New bill | Details section, items editor, sticky footer with running total and **Review**. The review screen shows the summary with **Back to edit** and **Save bill**. |
 | `/trips/[tripId]` | Bill details | Header (title, store, date, category, Owned/Shared badge). Owner actions: Edit, Delete, Invite. Items list, total, participant shares with breakdown, reconciliation badge. Participants section (owner sees invitation states and actions). |
 | `/trips/[tripId]/edit` | Edit bill | The same form as new, prefilled. Save goes straight to an update after review. |
 | `/invitations` | Invitations | Two tabs: **Received** (Accept/Decline) and **Sent** (status badges, Cancel for pending). |
 | `/trips` | Bill History | Search, filter bar (collapsible on mobile), sort, result list, Load more. |
 | `/price-history` | Price History | Product search, results, selected product observations, other variants. |
-| `/settings` | Settings | Username (edit), verified email, verified phone (or "No verified phone"), **Manage email & phone** (Clerk `UserProfile` in a dialog or section, `routing="hash"`), Sign out. |
+| `/settings` | Settings | Name (edit), username (edit), email (read-only), Sign out. |
 
 ### 12.3 Item editor UX (mobile-first)
 
@@ -917,7 +962,12 @@ Both functions share one internal helper, `collectAccessibleItems(ctx, userId, c
   - `convex`: `environment: "edge-runtime"`, `include: ["tests/convex/**/*.test.ts"]`, `server: { deps: { inline: ["convex-test"] } }`.
 - **convex-test**: `tests/convex/helpers.ts` exports `modules = import.meta.glob("../../convex/**/!(*.*.*)*.*s")` and helpers:
   - `setupTest()` returns `convexTest(schema, modules)`.
-  - `createUser(t, username, { email?, phone? })` calls `ensureCurrent` and `setUsername` under `t.withIdentity({ subject: "clerk_" + username })`, then `internal.users.upsertFromClerk` for the contacts. It returns `{ id, as }`, where `as` is the identity-bound accessor.
+  - `createUser(t, username, { name?, email?, skipUsername? })`:
+    1. Insert a `users` row with `t.run` (`name` defaults to the username, `email` to `${username}@example.com`).
+    2. Build `as = t.withIdentity({ subject: \`${userId}|test-session\` })`. Convex Auth's `getAuthUserId` reads the user ID before the `|`.
+    3. Call `setUsername` as that user, unless `skipUsername` is set (for "no username yet" cases).
+    It returns `{ id, as }`, where `as` is the identity-bound accessor. Check the subject format against the current Convex Auth docs/source if `getAuthUserId` returns `null` in tests.
+  - The Password sign-up/sign-in flow itself isn't run in `convex-test`. Its rules are covered by `auth-validation` unit tests and the manual checklist.
   - `createTrip(as, overrides)` builds valid input.
   - Use the current convex-test docs if the glob or config syntax has changed.
 - Scripts in `package.json`:
@@ -929,21 +979,21 @@ Both functions share one internal helper, `collectAccessibleItems(ctx, userId, c
 
 ### 13.2 Test accounts for manual testing
 
-Use Clerk's **test mode** in the development instance:
+There is no email verification, so no codes or real inboxes are needed. Sign up in the app:
 
-- Emails containing `+clerk_test` receive no real mail and accept code `424242`. For example `alice+clerk_test@example.com`, `bob+clerk_test@example.com` and `carol+clerk_test@example.com`.
-- Clerk test phone numbers `+1 201-555-0100` to `0199` accept code `424242`.
+- **Alice** / `alice@example.com`, **Bob** / `bob@example.com`, **Carol** / `carol@example.com`, each with a password such as `testpass123` (development only).
 - Roles used in checklists: **Alice** (owner), **Bob** (invitee/participant), **Carol** (unrelated user). Use separate browser profiles or a private window for each.
 
 ### 13.3 Mandatory test coverage (accumulates per phase)
 
 - Money: every case in §4.5, uneven paisa splits, rounding, parsing, and a randomised reconciliation property test (500 random bills from a seeded generator: Σ shares === total).
 - Permissions matrix: owner, accepted, pending, declined, cancelled, removed, unrelated and unauthenticated, against `trips.get`, `update`, `remove`, `listRecent`, `listHistory`, `invitations.*`, `priceHistory.*` and `items.suggest`.
-- Invitations by username, email and phone; an unverified phone is not matched; duplicates; re-invites; self-invites; responding to another user's invitation.
+- Sign-up and sign-in validation rules and messages (§10.7).
+- Invitations by username and email (both case-insensitive); users without a username are not matched; duplicates; re-invites; self-invites; responding to another user's invitation.
 - Isolation: editing or deleting one trip doesn't change another trip's item with the same product.
 - Product variants and units are not merged.
 - Deletion removes the trip from history and price history and revokes access.
-- Invitation responses contain no `email`/`phone` keys (assert on the object keys).
+- Invitation and trip responses contain no `email` or `name` keys for other users (assert on the object keys).
 
 ---
 
@@ -952,13 +1002,13 @@ Use Clerk's **test mode** in the development instance:
 Instructions for the implementing agent:
 
 1. **Work one phase at a time, in order.** Within a phase, implement the backend, domain, UI and tests together. Don't mock data the backend can provide.
-2. **Before writing code that touches Next.js, Clerk, Convex, Tailwind, shadcn or convex-test, check the current official docs.** APIs change: for example `proxy.ts` vs `middleware.ts`, Clerk's Convex integration, async `params`, and Vitest `projects`.
+2. **Before writing code that touches Next.js, Convex, Convex Auth, Tailwind, shadcn or convex-test, check the current official docs.** APIs change: for example `proxy.ts` vs `middleware.ts`, Convex Auth's Next.js middleware and server provider, async `params`, and Vitest `projects`.
    - Convex + Next.js App Router: https://docs.convex.dev/client/nextjs/app-router/
-   - Convex + Clerk: https://docs.convex.dev/auth/clerk
+   - Convex Auth: https://labs.convex.dev/auth
+   - Convex Auth with Next.js: https://labs.convex.dev/auth/authz/nextjs
+   - Convex Auth passwords: https://labs.convex.dev/auth/config/passwords
    - Convex indexes: https://docs.convex.dev/database/reading-data/indexes/
    - convex-test: https://docs.convex.dev/testing/convex-test
-   - Clerk Next.js quickstart: https://clerk.com/docs/quickstarts/nextjs
-   - Clerk webhooks: https://clerk.com/docs/webhooks/sync-data
 3. Steps marked **🧑 HUMAN** need the user (creating accounts, copying keys, signing in to CLIs). Stop and ask the user to do them, then continue.
 4. **Keep two dev processes running:** `npx convex dev` (it pushes schema and functions and regenerates `convex/_generated`) and `npm run dev`.
 5. **At the end of each phase:**
@@ -1015,7 +1065,7 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
      - `secondary`: `bg-surface border border-line-strong text-ink hover:bg-surface-subtle`
      - `ghost`: `bg-transparent text-ink hover:bg-surface-subtle`
      - `danger`: `bg-error text-ink-inverse`
-   - Sizes: `lg` = `h-control-lg px-24 type-button rounded-lg`, `md` = `h-control-md px-20 type-button-sm rounded-md`, `sm` = `h-control-sm px-16 type-button-sm rounded-sm`, `icon` = `size-tap rounded-md`. Disabled: `opacity-50 pointer-events-none`. Keep `asChild` (Radix Slot) so it can wrap `next/link`.
+   - Sizes (all pill-shaped): `lg` = `h-control-lg px-28 type-button rounded-pill`, `md` = `h-control-md px-24 type-button-sm rounded-pill`, `sm` = `h-control-sm px-16 type-button-sm rounded-pill`, `icon` = `size-tap rounded-pill`. Disabled: `opacity-50 pointer-events-none`. Keep `asChild` (Radix Slot) so it can wrap `next/link`.
 7. **Icons:** `npm i lucide-react`.
 8. **ESLint guardrails.** Append to `eslint.config.mjs` (adapt to the generated flat config's shape):
    ```js
@@ -1034,13 +1084,13 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
        ignores: ["src/lib/db/**", "src/lib/auth/**"],
        rules: { "no-restricted-imports": ["error", { patterns: [
          { group: ["convex/*", "convex", "**/convex/_generated/*"], message: "RULES §3: import Convex only in src/lib/db." },
-         { group: ["@clerk/*"], message: "RULES §3: import Clerk only in src/lib/auth." },
+         { group: ["@convex-dev/auth", "@convex-dev/auth/*"], message: "RULES §3: import Convex Auth only in src/lib/auth." },
        ] }] },
      },
      {
        files: ["src/domain/**/*.ts"],
        rules: { "no-restricted-imports": ["error", { patterns: [
-         { group: ["react", "react/*", "next", "next/*", "convex", "convex/*", "@clerk/*", "@/lib/*", "@/components/*"], message: "src/domain must stay pure TypeScript." },
+         { group: ["react", "react/*", "next", "next/*", "convex", "convex/*", "@convex-dev/*", "@/lib/*", "@/components/*"], message: "src/domain must stay pure TypeScript." },
        ] }] },
      },
      { ignores: ["convex/_generated/**", ".next/**", "node_modules/**"] },
@@ -1070,63 +1120,83 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 
 ### Phase 1 — Sign-up, sign-in, app shell and username onboarding
 
-**Goal:** a person can sign up, choose a unique username, land on the (empty) dashboard inside the app shell, and sign out. A signed-out visitor can't reach app pages.
+**Goal:** a person signs up with **Name, Email, Password and Confirm password**, chooses a unique username, lands on the (empty) dashboard inside the app shell, and signs out. They can sign in again with email and password. A signed-out visitor can't reach app pages.
 
-**🧑 HUMAN steps**
+**🧑 HUMAN steps** (no third-party auth account or keys are needed)
 
-1. Create a Clerk application (development instance) with **Email** as a sign-in identifier and email verification on, plus **Phone number** as optional with verification on. **Disable Clerk usernames**, because the app manages usernames itself.
-2. Copy `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` into `.env.local`.
-3. In Clerk, enable the **Convex integration** (or create the JWT template named `convex`, per the current Convex + Clerk guide) and copy the **Frontend API URL / issuer**.
-4. Run `npx convex dev`, log in, and create a project. This writes `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL` to `.env.local`.
-5. Run `npx convex env set CLERK_JWT_ISSUER_DOMAIN https://<issuer>`.
+1. Run `npx convex dev`, log in, and create a project. This writes `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL` to `.env.local`.
+2. After the packages below are installed, run `npx @convex-dev/auth` and accept its prompts, using `http://localhost:3000` as the site URL. It sets `SITE_URL`, `JWT_PRIVATE_KEY` and `JWKS` on the Convex dev deployment. If it offers to write files that this plan also defines (`convex/auth.ts`, `convex/http.ts`, `convex/auth.config.ts`), let it, then adjust them to match §11.2.
 
 **Backend**
 
-- `npm i convex @clerk/nextjs`, and `npm i -D convex-test @edge-runtime/vm`.
-- `convex/auth.config.ts`: `providers: [{ domain: process.env.CLERK_JWT_ISSUER_DOMAIN, applicationID: "convex" }]`.
-- `convex/schema.ts`: the `users` table (§9).
-- `convex/lib/errors.ts` and `convex/lib/auth.ts` (`getCurrentUser`, `requireCurrentUser`, `requireOnboardedUser`). Look up the user by `by_clerkUserId` = `identity.subject`, ignoring rows with `deletedAt`.
-- `convex/users.ts`: `getCurrent`, `ensureCurrent`, `isUsernameAvailable`, `setUsername` (§11.1).
+- `npm i convex @convex-dev/auth @auth/core` (use the `@auth/core` version the Convex Auth docs specify), and `npm i -D convex-test @edge-runtime/vm`.
+- `convex/schema.ts`: `...authTables` and the `users` table (§9).
+- `convex/auth.ts`, `convex/auth.config.ts` and `convex/http.ts` (§11.2).
+- `convex/lib/errors.ts` and `convex/lib/auth.ts` (`getCurrentUser`, `requireCurrentUser`, `requireOnboardedUser`), using `getAuthUserId(ctx)` then `ctx.db.get`.
+- `convex/users.ts`: `getCurrent`, `isUsernameAvailable`, `setUsername` (§11.1).
 
 **Domain**
 
-- `src/domain/normalization.ts`: `normalizeText`, `normalizeUsername`, `isValidUsername`. The rest comes later.
+- `src/domain/normalization.ts`: `normalizeText`, `normalizeUsername`, `isValidUsername`, `normalizeEmail` and `isValidEmail`. The rest comes later.
+- `src/domain/auth-validation.ts` (§10.7).
 - `src/domain/errors.ts` (codes) and `src/domain/types.ts` (`CurrentUser`).
 
 **Frontend service folders**
 
 - `src/lib/auth/`:
-  - `provider.tsx`: `ClerkProvider` with an `appearance` theme that uses `var(--color-primary)` etc. If unsupported, leave Clerk defaults rather than hard-coding values.
-  - `components.tsx`: `SignInView`, `SignUpView`, `UserMenu` (wrapping Clerk's `UserButton` or a custom dropdown with Settings and Sign out) and `SignOutButton`.
-  - `hooks.ts`: `useClerkAuthForConvex` (re-exported `useAuth`).
-  - `server.ts`: `getSignedInUserId()` (wraps `auth()`).
-  - `middleware.ts`: `createAuthMiddleware()` returns `clerkMiddleware` that calls `auth.protect()` for `/dashboard(.*)`, `/trips(.*)`, `/invitations(.*)`, `/price-history(.*)`, `/settings(.*)` and `/onboarding(.*)`.
-- `src/proxy.ts` (or `src/middleware.ts` for the installed Next.js version): `export default createAuthMiddleware();` plus the matcher config from the Clerk docs.
+  - `provider.tsx`:
+    - `AuthServerProvider` wraps `ConvexAuthNextjsServerProvider`.
+    - `AuthClientProvider` is a client component wrapping `ConvexAuthNextjsProvider` with the shared client from `src/lib/db/client.ts`.
+  - `hooks.ts`:
+    - `useSignUp()` returns `{ signUp({ name, email, password }), isPending, error }`. It calls `useAuthActions().signIn("password", { flow: "signUp", name, email, password })`. `confirmPassword` is never passed.
+    - `useSignIn()` has the same shape, with `flow: "signIn"` and `{ email, password }`.
+    - `useSignOut()`.
+    - `useAuthStatus()` returns `{ isLoading, isAuthenticated }` (wraps `useConvexAuth`).
+  - `errors.ts`: `toAuthError(error, flow)` returns `{ message?, fieldErrors? }`:
+    - A sign-in failure (unknown email or wrong password) → "Email or password is incorrect."
+    - Sign-up with an email that already has an account → `fieldErrors.email` = "An account with this email already exists. Sign in instead."
+    - Too many failed attempts → "Too many attempts. Wait a few minutes and try again."
+    - Our `VALIDATION` errors from `profile()`/`validatePasswordRequirements` → their `fieldErrors`.
+    - Anything else → "Something went wrong. Please try again."
+    - Match on what the installed Convex Auth version actually throws: trigger each case once and confirm.
+  - `server.ts`: `isSignedIn()` wraps `isAuthenticatedNextjs()`.
+  - `middleware.ts`: `createAuthMiddleware()` returns `convexAuthNextjsMiddleware`, which:
+    - redirects signed-out visitors on `/dashboard(.*)`, `/trips(.*)`, `/invitations(.*)`, `/price-history(.*)`, `/settings(.*)` and `/onboarding(.*)` to `/sign-in` (`nextjsMiddlewareRedirect`);
+    - redirects signed-in users on `/sign-in` and `/sign-up` to `/dashboard`.
+- `src/proxy.ts` (or `src/middleware.ts` for the installed Next.js version): `export default createAuthMiddleware();` plus the matcher config from the Convex Auth Next.js docs.
 - `src/lib/db/`:
   - `client.ts`: the env check and a single `ConvexReactClient`.
-  - `provider.tsx`: `ConvexProviderWithClerk client={client} useAuth={useClerkAuthForConvex}`.
   - `ids.ts`: `toId<T>(s: string): Id<T>` and `fromId(id): string`.
   - `errors.ts`: `toAppError`.
-  - `users.ts`: `useCurrentUser()` returns `CurrentUser | null | undefined`; also `useEnsureCurrentUser()`, `useUsernameAvailability(name)`, `useSetUsername()`; and `useAuthStatus()` (wraps `useConvexAuth`).
-- Root layout: `<AuthProvider><DbProvider>{children}</DbProvider></AuthProvider>`.
+  - `users.ts`: `useCurrentUser()` returns `CurrentUser | null | undefined`; also `useUsernameAvailability(name)` and `useSetUsername()`.
+- Root layout: `<AuthServerProvider><html …><body><AuthClientProvider>{children}</AuthClientProvider></body></html></AuthServerProvider>`.
 
 **UI**
 
-- `(auth)/sign-in/[[...sign-in]]/page.tsx` and `(auth)/sign-up/[[...sign-up]]/page.tsx`: a centred card using `SignInView`/`SignUpView`.
-- Landing: if `getSignedInUserId()` returns an ID, `redirect("/dashboard")`.
 - Components:
-  - `components/ui/text-field.tsx`: label, input, hint and error with `aria-describedby`; `h-control-md`, `rounded-md`, `border-line-strong`, `focus:border-primary`; error state `border-error text-error`.
+  - `components/ui/text-field.tsx`: label, input, hint and error with `aria-describedby`; `h-control-md`, `rounded-md`, `border-line-strong`, `focus:border-primary`; error state `border-error text-error`. It passes `type` and `autoComplete` through.
   - `components/ui/card.tsx`, `components/ui/loading-state.tsx` (skeleton blocks), `components/ui/empty-state.tsx`, `components/ui/error-state.tsx`.
   - `components/layout/app-shell.tsx`, `nav-link.tsx` (active state via `usePathname`) and `page-header.tsx`.
+  - `components/layout/user-menu.tsx`: a button showing the user's name that opens a dropdown (`npx shadcn@latest add dropdown-menu`, restyled with tokens). In this phase it shows the name, `@username` and **Sign out**.
+- `components/auth/sign-up-form.tsx`:
+  - Fields: **Name** (`autoComplete="name"`), **Email** (`type="email"`, `autoComplete="email"`), **Password** (`type="password"`, `autoComplete="new-password"`, hint "At least 8 characters") and **Confirm password** (`type="password"`, `autoComplete="new-password"`).
+  - Validates with `validateSignUp` on blur and on submit, with inline errors. The server isn't called while the form is invalid.
+  - **Create account** calls `useSignUp` and shows a pending state. On success it does `router.replace("/onboarding")`. On failure it shows `toAuthError` messages inline (field errors) or above the button (`role="alert"`), and keeps everything the user typed.
+  - Footer link: "Already have an account? Sign in".
+- `components/auth/sign-in-form.tsx`:
+  - Fields: **Email** and **Password** (`autoComplete="current-password"`). It uses `validateSignIn`.
+  - **Sign in** calls `useSignIn`. On success it does `router.replace("/dashboard")`, and `AccountGate` sends a user without a username to onboarding. On failure it shows the generic message above the button (`role="alert"`) and keeps the email.
+  - Footer link: "New here? Create an account".
+- `(auth)/sign-up/page.tsx` and `(auth)/sign-in/page.tsx`: a centred card with the app name and the form.
+- Landing: if `await isSignedIn()`, `redirect("/dashboard")`.
 - `(onboarding)/onboarding/page.tsx`:
-  1. Call `ensureCurrent` on mount (once authenticated).
-  2. Show the username field with a live availability check ("@alice is available" ✓ or "That username is taken" ✗) and the rules hint "3–20 characters: letters, numbers, underscore; start with a letter".
-  3. Continue calls `setUsername` and then `router.replace("/dashboard")`.
-  4. If the user already has a username, redirect to the dashboard.
+  1. Show the username field with a live availability check ("@alice is available" ✓ or "That username is taken" ✗) and the rules hint "3–20 characters: letters, numbers, underscore; start with a letter".
+  2. Continue calls `setUsername` and then `router.replace("/dashboard")`.
+  3. If the user already has a username, redirect to the dashboard.
 - `(app)/layout.tsx`: `AppShell` + `AccountGate`.
-  - `AccountGate` (client): while auth is loading, show a full-page loading state. Once authenticated, call `ensureCurrent` once. If the user row has no username, `router.replace("/onboarding")`. Otherwise render the children.
-  - Nav in this phase: **Home** only, plus the user menu with **Sign out**.
-- `(app)/dashboard/page.tsx`: "Hi, @username" and an `EmptyState` ("Your bills will appear here."). There's no button yet, because creating bills arrives in Phase 3.
+  - `AccountGate` (client): while auth or the current user is loading, show a full-page loading state. If the user has no username, `router.replace("/onboarding")`. Otherwise render the children.
+  - Nav in this phase: **Home** only, plus the user menu.
+- `(app)/dashboard/page.tsx`: "Hi, {name}" and an `EmptyState` ("Your bills will appear here."). There's no button yet, because creating bills arrives in Phase 3.
 - `(app)/error.tsx`: friendly error with **Try again** (`reset()`).
 - `src/app/not-found.tsx`.
 
@@ -1134,74 +1204,61 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 
 - Extend `vitest.config.mts` with the `convex` project, and create `tests/convex/helpers.ts`.
 - `tests/convex/users.test.ts`:
-  - `ensureCurrent` is idempotent (calling it twice gives one row).
+  - `getCurrent` returns exactly the keys `id`, `name`, `email` and `username` for the caller.
   - `setUsername` rejects invalid names (`"ab"`, `"1abc"`, `"has space"`).
   - Uniqueness is case-insensitive (`Alice` then `alice` → `USERNAME_TAKEN`).
   - A user can re-save their own username.
   - Unauthenticated calls to `getCurrent` return `null`, and to `setUsername` throw `UNAUTHENTICATED`.
-- `tests/unit/normalization.test.ts`: username normalization and validity.
+- `tests/unit/normalization.test.ts`: username normalization and validity; `normalizeEmail` (`" Alice@Example.COM "` → `"alice@example.com"`) and `isValidEmail`.
+- `tests/unit/auth-validation.test.ts`: every message in §10.7, including an empty form, a 61-character name, `"alice@"`, a 7-character password (rejected), an 8-character one (accepted), 129 characters (rejected), a confirm mismatch, a trimmed name and email, and sign-in presence checks only.
 
 **Verification checklist**
 
-- [ ] Signing up as `alice+clerk_test@example.com` (code 424242) leads to `/onboarding`. Choosing `alice` leads to the dashboard showing "Hi, @alice".
-- [ ] A second account trying `Alice` sees "That username is taken".
-- [ ] Signing out leads to `/`. Visiting `/dashboard` while signed out redirects to sign-in.
-- [ ] Signing in again goes straight to the dashboard, not onboarding.
-- [ ] The Convex dashboard shows exactly one `users` row per account.
+- [ ] Signing up as Alice / `alice@example.com` / `testpass123` (confirmed) leads to `/onboarding`. Choosing `alice` leads to the dashboard showing "Hi, Alice".
+- [ ] The sign-up form blocks an empty field, an invalid email, a 7-character password and a mismatched confirm password with inline messages, without a network request.
+- [ ] Signing up again with `ALICE@example.com` shows "An account with this email already exists. Sign in instead."
+- [ ] A second account trying the username `Alice` sees "That username is taken".
+- [ ] Signing out leads to `/`. Visiting `/dashboard` while signed out redirects to `/sign-in`. Visiting `/sign-in` while signed in redirects to `/dashboard`.
+- [ ] Signing in with `Alice@Example.com` and the right password goes straight to the dashboard, not onboarding. A wrong password shows "Email or password is incorrect."
+- [ ] Reloading the page keeps the user signed in.
+- [ ] The Convex dashboard shows exactly one `users` row per account with `name` and lowercase `email`. No plain-text password appears in any table.
 - [ ] `npm run check` passes.
 
 ---
 
-### Phase 2 — Profile and settings with verified contact sync
+### Phase 2 — Profile and settings
 
-**Goal:** users manage their username, email and phone. Verified email and phone values are synced securely from Clerk to Convex through a signed webhook, so they can later be used for invitations.
-
-**🧑 HUMAN steps**
-
-1. In Clerk → Webhooks, add the endpoint `https://<deployment>.convex.site/clerk-users-webhook`. Take the `.convex.site` URL from the Convex dashboard. Subscribe to `user.created`, `user.updated` and `user.deleted`.
-2. Run `npx convex env set CLERK_WEBHOOK_SECRET whsec_...`.
+**Goal:** users see their account details on a Settings page and can change their name and username.
 
 **Backend**
 
-- `npm i svix`.
-- `convex/lib/clerkWebhook.ts`: `extractVerifiedContacts(payload)` returns `{ clerkUserId, verifiedEmailNormalized?, verifiedPhoneE164? }`. Only addresses and numbers with `verification.status === "verified"` count. Prefer the primary one.
-- `convex/http.ts`: the route from §11.2.
-- `convex/users.ts`: add the internal `upsertFromClerk` and `markDeletedFromClerk`. `getCurrent` now returns `verifiedEmail` and `verifiedPhone`.
+- `convex/users.ts`: add `updateName` (§11.1).
 
 **Domain**
 
-- `normalizeEmail` and `normalizePhone`, with tests.
+- Nothing new: `validateName` exists since Phase 1.
 
 **UI**
 
 - Nav: add **Settings** to the user menu.
+- `components/ui/badge.tsx` (variants `neutral | success | warning | error | primary`). It's introduced here for the Settings page and reused for category, Owned/Shared and invitation-status badges in later phases.
 - `(app)/settings/page.tsx`, with sections in `settings/_components/`:
+  - **Name:** shows the name with **Change**. The inline edit uses `TextField`, `validateName` and `updateName`. The dashboard greeting and user menu update reactively.
   - **Username:** shows `@username` with **Change**. The inline edit uses the same availability check and `setUsername`.
-  - **Contact details:**
-    - Email shows its value and a "Verified" badge (`components/ui/badge.tsx`, variants `neutral | success | warning | error | primary`).
-    - Phone shows "+92… · Verified", or "No verified phone. Add one so friends can invite you by phone."
-    - A note below says: "Friends can invite you by username, verified email, or verified phone. Your email and phone are never shown to other users."
-  - **Manage email & phone:** a button that opens a `Dialog` (`npx shadcn@latest add dialog`, restyled with tokens) containing `AccountProfile` (Clerk `UserProfile`, `routing="hash"`). Updates reach Convex through the webhook and the Settings page refreshes reactively.
+  - **Email:** shows the email, read-only, with the note "Your email can't be changed in this version." Below it: "Friends can invite you by username or email. Your name and email are never shown to other users."
   - **Sign out.**
 
 **Tests**
 
-- `tests/unit/normalization.test.ts`: phone cases (`0300-1234567` → `+923001234567`, `+92 300 1234567` → `+923001234567`, `0092300…` → `+92300…`, `12345` → `null`) and email lowercasing.
-- `tests/convex/webhook.test.ts`:
-  - Set `process.env.CLERK_WEBHOOK_SECRET` to a test secret and sign payloads with `new Webhook(secret).sign(id, timestamp, body)`.
-  - `t.fetch("/clerk-users-webhook", …)` with a valid signature upserts the verified email and phone.
-  - An **unverified** phone isn't stored.
-  - An invalid signature returns 400 and nothing changes.
-  - `user.deleted` sets `deletedAt` and clears the lookup fields.
-  - A webhook that arrives before `ensureCurrent` still ends with one row.
-- `clerkWebhook.ts` mapping: unit tests with sample payloads.
+- `tests/convex/users.test.ts`:
+  - `updateName` trims the value, rejects empty and 61-character names with `VALIDATION` (`fieldErrors.name`), and changes only the caller's row.
+  - Unauthenticated `updateName` → `UNAUTHENTICATED`.
 
 **Verification checklist**
 
-- [ ] After signing up, the Settings page shows the verified email within a few seconds (webhook).
-- [ ] Adding a Clerk test phone (`+1 201 555 0100`, code 424242) in Manage email & phone makes the phone appear as Verified. Removing it shows "No verified phone".
+- [ ] Changing the name updates Settings, the dashboard greeting and the user menu without a reload.
 - [ ] Changing the username works, and a taken name is rejected.
-- [ ] Clerk's webhook dashboard shows 200 responses. A manually sent request with a bad signature gets 400.
+- [ ] The email is shown read-only.
 - [ ] `npm run check` passes.
 
 ---
@@ -1347,7 +1404,7 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 
 ### Phase 5 — Invitations and shared read access
 
-**Goal:** Alice invites Bob by username, email or phone. Bob sees the pending invitation and accepts or declines. After accepting, Bob can view the bill read-only. Alice can cancel pending invitations and remove participants. All access states are enforced by the backend.
+**Goal:** Alice invites Bob by username or email. Bob sees the pending invitation and accepts or declines. After accepting, Bob can view the bill read-only. Alice can cancel pending invitations and remove participants. All access states are enforced by the backend.
 
 **Backend**
 
@@ -1366,7 +1423,8 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 **UI**
 
 - `components/ui/segmented-control.tsx`: an accessible radio group styled as pills. It's reused in Phase 7.
-- `components/trips/invite-dialog.tsx`: segmented **Username / Email / Phone**, then an input whose `inputMode` and `type` follow the choice (prefix "@" for username), then **Send invite**.
+- shadcn: `npx shadcn@latest add dialog`, restyled with tokens.
+- `components/trips/invite-dialog.tsx`: segmented **Username / Email**, then an input whose `type` follows the choice (prefix "@" for username, `type="email"` for email), then **Send invite**.
   - Success: "Invitation sent to @bob. They'll see it under Invitations in the app." It never says an email or SMS was sent.
   - Errors map from the codes in §8.4.
   - The dialog stays open to invite another person.
@@ -1389,9 +1447,8 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 **Tests**
 
 - `tests/convex/invitations.test.ts`:
-  - Invite by username (case-insensitive), by verified email (case-insensitive), and by verified phone in a local format (`0300…` matching `+92300…`).
-  - A phone that exists only unverified, which the webhook never stored, → `INVITE_NO_MATCH`.
-  - A user with no username → `INVITE_NO_MATCH`. A deleted user → `INVITE_NO_MATCH`.
+  - Invite by username (case-insensitive) and by email (case-insensitive and trimmed: `" Bob@Example.com "` matches `bob@example.com`).
+  - A user with no username → `INVITE_NO_MATCH`. An email with no account, or a malformed email → `INVITE_NO_MATCH`.
   - Self → `INVITE_SELF`. Pending duplicate → `INVITE_ALREADY_PENDING`. Accepted duplicate → `INVITE_ALREADY_PARTICIPANT`.
   - Re-invite after decline, cancel or remove: still **one row** for (trip, user), now pending.
   - A non-owner (an accepted participant) inviting → `FORBIDDEN`. An unrelated user inviting → `NOT_FOUND`.
@@ -1413,7 +1470,7 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
   | unrelated | `null` | ✗ | `NOT_FOUND` |
   | unauthenticated | `null` | `[]` | `UNAUTHENTICATED` |
 
-- Accepted participants' `TripDetail` contains no email or phone fields anywhere (deep key scan).
+- Accepted participants' `TripDetail` contains no `email` or `name` fields anywhere (deep key scan).
 
 **Verification checklist (three accounts: Alice, Bob, Carol)**
 
@@ -1424,7 +1481,7 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 - [ ] Alice invites Carol by email, and Carol declines. Alice sees "Declined", and Carol has no access.
 - [ ] Alice re-invites Carol, then cancels. Carol's pending invitation disappears.
 - [ ] Alice removes Bob after confirming. Bob's open bill page switches to the no-access state live, and the bill leaves his dashboard.
-- [ ] Inviting by phone works for an account with a verified test phone, and fails with the generic message for one without.
+- [ ] Inviting `nobody@example.com` (no account) shows the generic "No account matches that email" message.
 - [ ] `npm run check` passes.
 
 ---
@@ -1681,16 +1738,15 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
    - No `.collect()` on an unbounded query. Grep and justify each `.collect()`; they should only appear on per-trip indexes.
    - Error messages shown to users come from `toAppError` only.
 7. **Run the full test suite** and add any missing case from §13.3 (concurrent duplicate invitations: two `invite` calls via `Promise.all` give one row and one `INVITE_ALREADY_PENDING`).
-8. **README:** product summary, architecture summary, setup (Clerk, Convex and webhook steps), env vars, scripts, test accounts, known MVP limits (the caps in §8.3), and the money rounding/allocation rule.
+8. **README:** product summary, architecture summary, setup (Convex and `npx @convex-dev/auth` steps), env vars, scripts, test accounts, known MVP limits (the caps in §8.3), and the money rounding/allocation rule.
 
 **🧑 HUMAN steps: production**
 
-1. Create a Clerk **production** instance (domain required) with the same settings as dev, and enable the Convex integration.
-2. In Convex, create the production deployment and set `CLERK_JWT_ISSUER_DOMAIN` (prod issuer) and `CLERK_WEBHOOK_SECRET` (from the prod webhook endpoint `https://<prod>.convex.site/clerk-users-webhook`).
-3. In Vercel, import the repo.
+1. In Convex, create the production deployment. Run `npx @convex-dev/auth --prod` (or follow the Convex Auth production docs) to generate its own `JWT_PRIVATE_KEY` and `JWKS`. Never reuse the dev keys.
+2. In Vercel, import the repo.
    - Set the build command to `npx convex deploy --cmd 'npm run build'`.
-   - Set env vars: `CONVEX_DEPLOY_KEY` (production deploy key), `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` (prod), and the `NEXT_PUBLIC_CLERK_*_URL` vars. `NEXT_PUBLIC_CONVEX_URL` is injected by `convex deploy`; follow the current Convex Vercel guide.
-4. Deploy, then add the Vercel domain to Clerk's allowed origins/redirects as required.
+   - Set the env var `CONVEX_DEPLOY_KEY` (production deploy key). `NEXT_PUBLIC_CONVEX_URL` is injected by `convex deploy`; follow the current Convex Vercel guide. There are no auth env vars in Vercel.
+3. Deploy, then set `SITE_URL` on the production Convex deployment to the live URL (`npx convex env set --prod SITE_URL https://<app>.vercel.app`, or through the dashboard).
 
 **Final acceptance pass:** run every checklist from Phases 1–10 again **on production** with three fresh accounts, then tick §16.
 
@@ -1719,9 +1775,9 @@ Do this only if the user approves it after Phase 11.
 
 The MVP is accepted when all of these are verified with at least two test accounts (an owner and an invited participant), plus an unrelated third account:
 
-1. [ ] A user can register, sign in, choose a username and create a private bill.
+1. [ ] A user can register with name, email, password and confirm password, sign in with email and password, choose a username and create a private bill.
 2. [ ] A private bill is visible to its owner and not visible to an unrelated signed-in user (UI **and** direct query).
-3. [ ] A user can share a bill with several participants by inviting registered users by username, verified email or verified phone.
+3. [ ] A user can share a bill with several participants by inviting registered users by username or email.
 4. [ ] An invitation stays pending until the invitee accepts or declines it.
 5. [ ] An accepted participant can view the bill. Pending, declined, cancelled and removed invitees can't.
 6. [ ] The owner can add, edit and delete items and assign each item to one or more eligible participants.
