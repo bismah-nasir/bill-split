@@ -4,13 +4,12 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { useValidatedForm } from "@/components/forms/use-validated-form";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { validateSignUp, type SignUpInput } from "@/domain/auth-validation";
 import { useSignUp } from "@/lib/auth/hooks";
-
-import { useValidatedForm } from "./use-validated-form";
 
 const EMPTY: SignUpInput = { name: "", email: "", password: "", confirmPassword: "" };
 

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 
+import { validateName } from "../src/domain/auth-validation";
 import { isValidUsername, normalizeUsername, USERNAME_RULES } from "../src/domain/normalization";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
@@ -47,6 +48,18 @@ export const setUsername = mutation({
     const username = args.username.normalize("NFKC").trim();
     await ctx.db.patch(user._id, { username, usernameNormalized });
     return { username };
+  },
+});
+
+/** Changes the caller's own display name (trimmed, 1–60 characters). */
+export const updateName = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, args) => {
+    const user = await requireCurrentUser(ctx);
+    const name = validateName(args.name);
+    if (!name.ok) throw appError("VALIDATION", name.error, { name: name.error });
+    await ctx.db.patch(user._id, { name: name.value });
+    return { name: name.value };
   },
 });
 

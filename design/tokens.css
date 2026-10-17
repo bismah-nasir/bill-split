@@ -61,6 +61,7 @@
 
   --color-error: #b91c1c;
   --color-error-soft: #fee2e2;
+  --color-error-soft-hover: #fecaca;  /* hover on error-soft; error text on it is 4.65:1 */
 
   --color-warning: #b45309;
   --color-warning-soft: #fef3c7;

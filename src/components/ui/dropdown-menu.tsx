@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
@@ -48,17 +49,30 @@ function DropdownMenuLabel({
   );
 }
 
+const dropdownMenuItemVariants = cva(
+  "flex h-control-sm cursor-pointer items-center gap-8 rounded-sm px-10 type-body-sm outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:size-icon-md [&_svg]:shrink-0",
+  {
+    variants: {
+      variant: {
+        default: "text-ink data-highlighted:bg-surface-subtle [&_svg]:text-ink-secondary",
+        /** Destructive actions, e.g. Sign out. Highlight covers hover and keyboard focus. */
+        danger: "text-error data-highlighted:bg-error-soft [&_svg]:text-error",
+      },
+    },
+    defaultVariants: { variant: "default" },
+  },
+);
+
 function DropdownMenuItem({
   className,
+  variant,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Item>) {
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Item> &
+  VariantProps<typeof dropdownMenuItemVariants>) {
   return (
     <DropdownMenuPrimitive.Item
       data-slot="dropdown-menu-item"
-      className={cn(
-        "flex h-control-sm cursor-pointer items-center gap-8 rounded-sm px-10 type-body-sm text-ink outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-highlighted:bg-surface-subtle [&_svg]:size-icon-md [&_svg]:shrink-0 [&_svg]:text-ink-secondary",
-        className,
-      )}
+      className={cn(dropdownMenuItemVariants({ variant }), className)}
       {...props}
     />
   );

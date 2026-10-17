@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
+import type { FunctionArgs, FunctionReference } from "convex/server";
 import { useCallback, useEffect, useState } from "react";
 
 import { isValidUsername } from "@/domain/normalization";
@@ -46,17 +47,32 @@ export function useUsernameAvailability(username: string): UsernameAvailability 
 }
 
 export function useSetUsername() {
-  const mutate = useMutation(api.users.setUsername);
+  const { run, isPending, error } = useAppMutation(api.users.setUsername);
+  const setUsername = useCallback((username: string) => run({ username }), [run]);
+  return { setUsername, isPending, error };
+}
+
+export function useUpdateName() {
+  const { run, isPending, error } = useAppMutation(api.users.updateName);
+  const updateName = useCallback((name: string) => run({ name }), [run]);
+  return { updateName, isPending, error };
+}
+
+/**
+ * Wraps a mutation with pending and error state. `run` resolves to `null` on success,
+ * or to the error to show, so forms needn't sync errors through effects.
+ */
+function useAppMutation<Mutation extends FunctionReference<"mutation">>(reference: Mutation) {
+  const mutate = useMutation(reference);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<AppError | null>(null);
 
-  /** Resolves to `null` on success, or to the error to show. */
-  const setUsername = useCallback(
-    async (username: string): Promise<AppError | null> => {
+  const run = useCallback(
+    async (args: FunctionArgs<Mutation>): Promise<AppError | null> => {
       setIsPending(true);
       setError(null);
       try {
-        await mutate({ username });
+        await mutate(args);
         return null;
       } catch (caught) {
         const appError = toAppError(caught);
@@ -69,5 +85,5 @@ export function useSetUsername() {
     [mutate],
   );
 
-  return { setUsername, isPending, error };
+  return { run, isPending, error };
 }

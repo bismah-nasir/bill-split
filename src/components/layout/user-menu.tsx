@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronDown, LogOut } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, LogOut, Settings } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +32,13 @@ export function UserMenu() {
           <span className="truncate type-caption text-ink-muted">@{user.username}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => void signOut()}>
+        <DropdownMenuItem asChild>
+          <Link href="/settings">
+            <Settings aria-hidden />
+            Settings
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem variant="danger" onSelect={() => void signOut()}>
           <LogOut aria-hidden />
           Sign out
         </DropdownMenuItem>

@@ -15,6 +15,8 @@ const buttonVariants = cva(
           "bg-surface border border-line-strong text-ink hover:bg-surface-subtle",
         ghost: "bg-transparent text-ink hover:bg-surface-subtle",
         danger: "bg-error text-ink-inverse",
+        /** Lower-emphasis destructive action, e.g. Sign out. */
+        "danger-soft": "bg-error-soft border border-error text-error hover:bg-error-soft-hover",
       },
       size: {
         lg: "h-control-lg px-28 type-button rounded-pill",

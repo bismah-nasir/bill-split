@@ -103,3 +103,40 @@ describe("users.isUsernameAvailable", () => {
     expect(data).toMatchObject({ code: "UNAUTHENTICATED" });
   });
 });
+
+describe("users.updateName", () => {
+  it("trims the name and changes only the caller's row", async () => {
+    const t = setupTest();
+    const alice = await createUser(t, "alice", { name: "Alice" });
+    const bob = await createUser(t, "bob", { name: "Bob" });
+
+    const result = await alice.as.mutation(api.users.updateName, { name: "  Alice Khan  " });
+
+    expect(result).toEqual({ name: "Alice Khan" });
+    expect((await alice.as.query(api.users.getCurrent))?.name).toBe("Alice Khan");
+    expect((await bob.as.query(api.users.getCurrent))?.name).toBe("Bob");
+  });
+
+  it("accepts a 60-character name", async () => {
+    const t = setupTest();
+    const alice = await createUser(t, "alice");
+    const name = "a".repeat(60);
+    expect(await alice.as.mutation(api.users.updateName, { name })).toEqual({ name });
+  });
+
+  it.each(["", "   ", "a".repeat(61)])("rejects the name %j with VALIDATION", async (name) => {
+    const t = setupTest();
+    const alice = await createUser(t, "alice", { name: "Alice" });
+
+    const data = await errorDataOf(() => alice.as.mutation(api.users.updateName, { name }));
+
+    expect(data).toMatchObject({ code: "VALIDATION", fieldErrors: { name: expect.any(String) } });
+    expect((await alice.as.query(api.users.getCurrent))?.name).toBe("Alice");
+  });
+
+  it("throws UNAUTHENTICATED when signed out", async () => {
+    const t = setupTest();
+    const data = await errorDataOf(() => t.mutation(api.users.updateName, { name: "Alice" }));
+    expect(data).toMatchObject({ code: "UNAUTHENTICATED" });
+  });
+});
