@@ -138,6 +138,8 @@
   --breakpoint-xl: 80rem;
 
   --container-content: 48rem;
+  --container-form: 26rem;         /* single-column auth and onboarding cards */
+  --container-menu: 14rem;         /* minimum width of dropdown menus */
 
 
   /* ─── Radius ─────────────────────────────────────────────────────── */
@@ -256,6 +258,15 @@
 
   --default-transition-duration: var(--duration-base);
   --default-transition-timing-function: var(--ease-standard);
+
+  /* Loading skeletons; always used as `motion-safe:animate-pulse` */
+  --animate-pulse: pulse 2s var(--ease-emphasized) infinite;
+
+  @keyframes pulse {
+    50% {
+      opacity: 0.5;
+    }
+  }
 }
 
 /* ─── Typography utilities ─────────────────────────────────────────── */

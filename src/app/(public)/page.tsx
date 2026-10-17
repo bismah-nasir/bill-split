@@ -22,6 +22,7 @@ const benefits: { icon: LucideIcon; title: string; description: string }[] = [
   },
 ];
 
+// Signed-in visitors are redirected to /dashboard by src/proxy.ts, so this page stays static.
 export default function LandingPage() {
   return (
     <main className="flex min-h-dvh items-center py-48">

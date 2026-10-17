@@ -40,9 +40,9 @@ See [.env.example](.env.example) for the variables. Auth keys live on the Convex
 | `npm run dev` | Start the Next.js dev server |
 | `npm run build` | Production build |
 | `npm start` | Serve the production build |
-| `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
+| `npm run typecheck` | TypeScript check of the app and of `convex/` (`tsc --noEmit && tsc --noEmit -p convex`) |
 | `npm run lint` | ESLint, including the design-token and service-boundary guardrails |
-| `npm test` | Run the tests once (Vitest) |
+| `npm test` | Run the tests once (Vitest: `unit` domain tests and `convex` backend tests via convex-test) |
 | `npm run test:watch` | Run the tests in watch mode |
 | `npm run check` | typecheck + lint + test; must pass at the end of every phase |
 
@@ -53,8 +53,18 @@ See [.env.example](.env.example) for the variables. Auth keys live on the Convex
 - `src/app/` — Next.js App Router routes.
 - `src/components/` — shared UI (`ui/`, `layout/`, feature folders).
 - `src/domain/` — pure TypeScript business logic (money, formatting, validation), shared by UI and backend.
+- `src/lib/db/` — the only frontend code that talks to Convex (hooks returning plain app types).
+- `src/lib/auth/` — the only frontend code that talks to Convex Auth (providers, hooks, error mapping, route proxy).
+- `src/proxy.ts` — Next.js proxy (formerly "middleware"): Convex Auth's session handling and route redirects.
 - `tests/unit/` — domain unit tests.
+- `tests/convex/` — backend tests (convex-test), including permission checks.
 - `docs/` — build plan and progress log.
+
+## Authentication
+
+Email and password through Convex Auth's Password provider, configured in `convex/auth.ts`. Sessions live in httpOnly cookies (30 days). `src/proxy.ts` redirects signed-out visitors away from app pages and signed-in users from `/`, `/sign-in` and `/sign-up` to the dashboard, but that is only a convenience: every Convex function checks the caller itself.
+
+`convex/auth.ts` wraps the Password provider so that signing up with an existing email always fails (Convex Auth would otherwise sign the caller in when the password matches), and so that sign-in/sign-up failures reach the UI as coded `ConvexError`s, which production deployments don't redact.
 
 ## Styling rules (enforced by ESLint)
 
