@@ -76,6 +76,24 @@ export function validatePersonName(input: string): Result<string> {
   return { ok: true, value: name };
 }
 
+const PEOPLE_LIMIT_MESSAGE = `A bill can have at most ${MAX_PEOPLE_PER_TRIP} people, including you`;
+const DUPLICATE_NAME_MESSAGE = "Someone on this bill already has that name";
+
+/**
+ * A name typed into **Add person**, checked against everyone already on the bill (`people`,
+ * the owner excluded) with the same rules `validateTripInput` applies when saving.
+ */
+export function validateNewPerson(input: string, people: Pick<PersonInput, "name">[]): Result<string> {
+  if (people.length >= MAX_PEOPLE_PER_TRIP - 1) return { ok: false, error: PEOPLE_LIMIT_MESSAGE };
+  const name = validatePersonName(input);
+  if (!name.ok) return name;
+  const normalized = normalizeText(name.value);
+  if (people.some((person) => normalizeText(person.name) === normalized)) {
+    return { ok: false, error: DUPLICATE_NAME_MESSAGE };
+  }
+  return name;
+}
+
 type Options = {
   /** "YYYY-MM-DD" the 1-year future limit counts from. Defaults to today (local time). */
   today?: string;
@@ -108,7 +126,7 @@ export function validateTripInput(
 
   // People
   if (people.length > MAX_PEOPLE_PER_TRIP - 1) {
-    fail("people", `A bill can have at most ${MAX_PEOPLE_PER_TRIP} people, including you`);
+    fail("people", PEOPLE_LIMIT_MESSAGE);
   }
   const personKeys = new Set<string>();
   const personNames = new Set<string>();
@@ -125,7 +143,7 @@ export function validateTripInput(
     }
     const nameNormalized = normalizeText(name.value);
     if (personNames.has(nameNormalized)) {
-      fail(`people.${index}.name`, "Someone on this bill already has that name");
+      fail(`people.${index}.name`, DUPLICATE_NAME_MESSAGE);
     }
     personNames.add(nameNormalized);
     validPeople.push({ key: person.key, personId: person.personId, name: name.value, nameNormalized });

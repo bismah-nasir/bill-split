@@ -3,9 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   initTripFormState,
   isFormDirty,
+  itemPath,
+  newTripValue,
+  personPath,
   toFormValue,
   tripFormReducer,
   tripToFormValue,
+  type TripFormAction,
+  type TripFormState,
 } from "../../src/components/trips/trip-form-state";
 import { OWNER_KEY, validateTripInput } from "../../src/domain/trip-validation";
 import type { TripDetail } from "../../src/domain/types";
@@ -123,5 +128,96 @@ describe("isFormDirty", () => {
     expect(isFormDirty(tripFormReducer(state, { type: "removeItem", rowKey: state.items[0].rowKey }), initial)).toBe(
       true,
     );
+  });
+});
+
+describe("people in the form", () => {
+  const apply = (state: TripFormState, ...actions: TripFormAction[]) => actions.reduce(tripFormReducer, state);
+
+  it("adds people at the end with new keys, ignoring names validateNewPerson refuses", () => {
+    const state = apply(
+      initTripFormState(newTripValue()),
+      { type: "addPerson", name: " Ben " },
+      { type: "addPerson", name: "Sara" },
+      { type: "addPerson", name: "ben" },
+      { type: "addPerson", name: "" },
+    );
+    expect(state.people).toEqual([
+      { key: "new:1", name: "Ben" },
+      { key: "new:2", name: "Sara" },
+    ]);
+  });
+
+  it("stores assignees in bill order and shows a missing payer straight away", () => {
+    let state = apply(
+      initTripFormState(newTripValue()),
+      { type: "addPerson", name: "Ben" },
+      { type: "addPerson", name: "Sara" },
+    );
+    const { rowKey } = state.items[0];
+    state = apply(state, { type: "setAssignees", rowKey, assigneeKeys: ["new:2", OWNER_KEY, "new:1"] });
+    expect(state.items[0].assigneeKeys).toEqual([OWNER_KEY, "new:1", "new:2"]);
+
+    state = apply(state, { type: "setAssignees", rowKey, assigneeKeys: [] });
+    expect(state.errors[itemPath(rowKey, "assignees")]).toBe("Choose who pays for this item");
+    state = apply(state, { type: "setAssignees", rowKey, assigneeKeys: ["new:1"] });
+    expect(state.errors).toEqual({});
+  });
+
+  it("takes a removed person off shared items and moves their solo items to the owner", () => {
+    let state = apply(
+      initTripFormState(newTripValue()),
+      { type: "addPerson", name: "Ben" },
+      { type: "addPerson", name: "Sara" },
+      { type: "addItem" },
+      { type: "addItem" },
+    );
+    const [pizza, drink, rice] = state.items.map((item) => item.rowKey);
+    state = apply(
+      state,
+      { type: "setAssignees", rowKey: pizza, assigneeKeys: [OWNER_KEY, "new:1", "new:2"] },
+      { type: "setAssignees", rowKey: drink, assigneeKeys: ["new:2"] },
+      { type: "setAssignees", rowKey: rice, assigneeKeys: [OWNER_KEY, "new:2"] },
+      { type: "removePerson", key: "new:2" },
+    );
+    expect(state.people).toEqual([{ key: "new:1", name: "Ben" }]);
+    expect(state.items.map((item) => item.assigneeKeys)).toEqual([[OWNER_KEY, "new:1"], [OWNER_KEY], [OWNER_KEY]]);
+  });
+
+  it("keeps people's errors on the right person when someone before them is removed", () => {
+    let state = apply(
+      initTripFormState(newTripValue()),
+      { type: "addPerson", name: "Ben" },
+      { type: "addPerson", name: "Sara" },
+      { type: "addPerson", name: "Zoe" },
+      { type: "renamePerson", key: "new:3", name: "" },
+      { type: "blur", path: personPath("new:3") },
+    );
+    expect(state.errors).toEqual({ [personPath("new:3")]: "Enter a name" });
+    state = apply(state, { type: "removePerson", key: "new:1" });
+    expect(state.errors).toEqual({ [personPath("new:3")]: "Enter a name" });
+  });
+
+  it("clears a duplicate-name error when the other person is renamed", () => {
+    let state = apply(
+      initTripFormState(newTripValue()),
+      { type: "addPerson", name: "Ben" },
+      { type: "addPerson", name: "Sara" },
+      { type: "renamePerson", key: "new:2", name: "Ben" },
+      { type: "blur", path: personPath("new:2") },
+    );
+    expect(state.errors).toEqual({ [personPath("new:2")]: "Someone on this bill already has that name" });
+    state = apply(state, { type: "renamePerson", key: "new:1", name: "Ben D." });
+    expect(state.errors).toEqual({});
+  });
+
+  it("gives new people keys that never clash with saved ones on an edit", () => {
+    const initial = tripToFormValue(trip);
+    const state = apply(initTripFormState(initial), { type: "addPerson", name: "Sara" });
+    expect(state.people).toEqual([
+      { key: "p1", personId: "p1", name: "Ben" },
+      { key: "new:1", name: "Sara" },
+    ]);
+    expect(isFormDirty(state, initial)).toBe(true);
   });
 });

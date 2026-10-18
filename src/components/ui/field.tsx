@@ -14,6 +14,8 @@ export type FieldControlProps = {
 
 type FieldProps = {
   label: string;
+  /** Keeps the label for screen readers only, where the context already makes it clear. */
+  hideLabel?: boolean;
   /** The control's id; generated when omitted. */
   id?: string;
   /** Neutral guidance shown under the control, e.g. the rules for the value. */
@@ -27,7 +29,7 @@ type FieldProps = {
 };
 
 /** A label, a control and its hint and status messages, wired up through `aria-describedby`. */
-export function Field({ label, id, hint, error, success, className, children }: FieldProps) {
+export function Field({ label, hideLabel, id, hint, error, success, className, children }: FieldProps) {
   const generatedId = React.useId();
   const controlId = id ?? generatedId;
   const hintId = `${controlId}-hint`;
@@ -36,7 +38,7 @@ export function Field({ label, id, hint, error, success, className, children }: 
 
   return (
     <div className={cn("flex min-w-0 flex-col gap-6", className)}>
-      <label htmlFor={controlId} className="type-body-sm font-medium text-ink">
+      <label htmlFor={controlId} className={cn("type-body-sm font-medium text-ink", hideLabel && "sr-only")}>
         {label}
       </label>
       {children({

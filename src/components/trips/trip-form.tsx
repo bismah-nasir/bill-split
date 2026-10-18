@@ -10,11 +10,13 @@ import { Select } from "@/components/ui/select";
 import { TextField } from "@/components/ui/text-field";
 import { CATEGORIES } from "@/domain/categories";
 import { lineTotalPaisa, parseQuantityToMilli, parseRupeesToPaisa } from "@/domain/money";
-import type { TripDetailsInput } from "@/domain/trip-validation";
+import { OWNER_KEY, type PersonInput, type TripDetailsInput } from "@/domain/trip-validation";
 import type { AppError } from "@/lib/db/errors";
 
 import { billViewFromForm } from "./bill-view";
 import { ItemEditor } from "./item-editor";
+import type { PickerPerson } from "./participant-picker";
+import { PeopleEditor } from "./people-editor";
 import { CategoryBadge, tripMetaLine } from "./trip-meta";
 import { TripSummary } from "./trip-summary";
 import {
@@ -42,7 +44,7 @@ type TripFormProps = {
 
 const SAVE_FAILED_MESSAGE = "Couldn't save your bill. Your changes are still here. Try again.";
 
-/** Create or edit a bill: details and items, then a review of the split before saving. */
+/** Create or edit a bill: details, people and items, then a review of the split before saving. */
 export function TripForm({ mode, initialValue, onSubmit, ref }: TripFormProps) {
   const [state, dispatch] = React.useReducer(tripFormReducer, initialValue, initTripFormState);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -101,7 +103,13 @@ export function TripForm({ mode, initialValue, onSubmit, ref }: TripFormProps) {
         onChange={(field, value) => dispatch({ type: "setDetail", field, value })}
         onBlur={(path) => dispatch({ type: "blur", path })}
       />
-      <ItemEditor items={state.items} errors={state.errors} dispatch={dispatch} />
+      <PeopleEditor people={state.people} items={state.items} errors={state.errors} dispatch={dispatch} />
+      <ItemEditor
+        items={state.items}
+        errors={state.errors}
+        people={pickerPeople(state.people)}
+        dispatch={dispatch}
+      />
       <StickyFooter>
         <RunningTotal items={state.items} />
         <Button type="submit" size="lg">
@@ -151,6 +159,14 @@ function DetailsSection({ details, errors, onChange, onBlur }: DetailsSectionPro
       </Card>
     </section>
   );
+}
+
+/** Everyone on the bill in bill order, labelled as the item chips show them. */
+function pickerPeople(people: PersonInput[]): PickerPerson[] {
+  return [
+    { key: OWNER_KEY, label: "You" },
+    ...people.map((person, index) => ({ key: person.key, label: person.name.trim() || `Person ${index + 2}` })),
+  ];
 }
 
 /** "3 items · Total Rs. 1,234.50", counting only rows whose quantity and price are valid. */

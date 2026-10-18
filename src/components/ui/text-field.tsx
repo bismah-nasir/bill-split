@@ -8,6 +8,8 @@ import { controlClassName, Field } from "./field";
 
 type TextFieldProps = Omit<React.ComponentProps<"input">, "children" | "prefix"> & {
   label: string;
+  /** Keeps the label for screen readers only. */
+  hideLabel?: boolean;
   /** Neutral guidance shown under the input, e.g. the rules for the value. */
   hint?: React.ReactNode;
   /** Shown in the error style and marks the input invalid. Takes precedence over `success`. */
@@ -21,6 +23,7 @@ type TextFieldProps = Omit<React.ComponentProps<"input">, "children" | "prefix">
 /** Labelled text input with hint and status messages wired up through `aria-describedby`. */
 export function TextField({
   label,
+  hideLabel,
   hint,
   error,
   success,
@@ -30,7 +33,7 @@ export function TextField({
   ...inputProps
 }: TextFieldProps) {
   return (
-    <Field label={label} id={id} hint={hint} error={error} success={success} className={className}>
+    <Field label={label} hideLabel={hideLabel} id={id} hint={hint} error={error} success={success} className={className}>
       {(control) => (
         <div className="relative">
           {prefix && (

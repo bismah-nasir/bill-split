@@ -21,6 +21,8 @@ type ConfirmDialogProps = {
   /** A failure to show inside the dialog, e.g. when deleting failed. */
   error?: string | null;
   onConfirm: () => void;
+  /** Where focus goes on close; call `event.preventDefault()` to move it yourself. */
+  onCloseAutoFocus?: (event: Event) => void;
 };
 
 /**
@@ -39,6 +41,7 @@ export function ConfirmDialog({
   isPending = false,
   error,
   onConfirm,
+  onCloseAutoFocus,
 }: ConfirmDialogProps) {
   return (
     <AlertDialogPrimitive.Root
@@ -49,7 +52,9 @@ export function ConfirmDialog({
     >
       <AlertDialogPrimitive.Portal>
         <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay motion-safe:animate-fade-in" />
-        <AlertDialogPrimitive.Content className="fixed inset-x-16 top-1/2 z-50 mx-auto flex max-w-form -translate-y-1/2 flex-col gap-16 rounded-lg bg-surface-elevated p-24 shadow-floating motion-safe:animate-dialog-in">
+        <AlertDialogPrimitive.Content
+          onCloseAutoFocus={onCloseAutoFocus}
+          className="fixed inset-x-16 top-1/2 z-50 mx-auto flex max-w-form -translate-y-1/2 flex-col gap-16 rounded-lg bg-surface-elevated p-24 shadow-floating motion-safe:animate-dialog-in">
           <div className="flex flex-col gap-8">
             <AlertDialogPrimitive.Title className="type-h3">{title}</AlertDialogPrimitive.Title>
             <AlertDialogPrimitive.Description className="type-body-sm text-ink-secondary">

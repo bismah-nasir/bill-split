@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { MoneyText } from "@/components/ui/money-text";
+import { summarizeLabels } from "@/domain/people";
 import type { TripCard as TripCardData } from "@/domain/types";
 
 import { CategoryBadge, OwnershipBadge, tripMetaLine } from "./trip-meta";
@@ -25,7 +26,7 @@ export function TripCard({ trip }: { trip: TripCardData }) {
         <CategoryBadge category={trip.category} />
         <OwnershipBadge isOwner={trip.isOwner} />
         <span className="min-w-0 truncate type-caption text-ink-muted">
-          {trip.peopleLabels.join(", ")}
+          {summarizeLabels(trip.peopleLabels)}
         </span>
       </div>
     </Link>

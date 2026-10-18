@@ -2,14 +2,17 @@
  * State for `TripForm`: field values as typed, inline errors and the edit → review step.
  * Pure (no React), so the rules for when errors appear live outside the UI.
  *
- * Item errors are stored by each row's stable `rowKey` (`items.r3.unitPrice`) rather than by
- * index, so removing a row can't move an error onto its neighbour. Validation results, which
- * use indexes (`items.2.unitPrice`), are translated with `byRowKey`.
+ * Item errors are stored by each row's stable `rowKey` (`items.r3.unitPrice`) and people's
+ * errors by the person's key (`people.new:2.name`) rather than by index, so removing a row or
+ * a person can't move an error onto a neighbour. Validation results, which use indexes
+ * (`items.2.unitPrice`, `people.1.name`), are translated with `byStableKey`.
  */
 import { DEFAULT_CATEGORY } from "@/domain/categories";
 import { milliToInput, paisaToInput, todayIsoDate } from "@/domain/format";
+import { removePersonFromItems } from "@/domain/people";
 import {
   OWNER_KEY,
+  validateNewPerson,
   validateTripInput,
   type ItemInput,
   type PersonInput,
@@ -36,6 +39,8 @@ export type TripFormState = {
   /** A save failure that doesn't belong to a field. */
   saveError: string | null;
   nextRowId: number;
+  /** Numbers the keys of people added in this form ("new:1", "new:2", …). */
+  nextPersonId: number;
 };
 
 export type TripFormAction =
@@ -44,6 +49,13 @@ export type TripFormAction =
   | { type: "blur"; path: string }
   | { type: "addItem" }
   | { type: "removeItem"; rowKey: string }
+  /** Ignored unless `validateNewPerson` accepts the name. */
+  | { type: "addPerson"; name: string }
+  | { type: "renamePerson"; key: string; name: string }
+  /** Also takes them off every item (`removePersonFromItems`). */
+  | { type: "removePerson"; key: string }
+  /** Who pays for an item; stored in bill order whatever order they're given in. */
+  | { type: "setAssignees"; rowKey: string; assigneeKeys: string[] }
   | { type: "review" }
   | { type: "backToEdit" }
   | { type: "saveFailed"; message: string; fieldErrors: Record<string, string> };
@@ -80,11 +92,21 @@ export function initTripFormState(value: TripFormValue): TripFormState {
     focus: null,
     saveError: null,
     nextRowId: value.items.length,
+    nextPersonId: 1,
   };
 }
 
 export function itemPath(rowKey: string, field: string): string {
   return `items.${rowKey}.${field}`;
+}
+
+export function personPath(key: string): string {
+  return `people.${key}.name`;
+}
+
+/** Every person's key in bill order: the owner, then everyone else as listed. */
+export function billOrder(people: Pick<PersonInput, "key">[]): string[] {
+  return [OWNER_KEY, ...people.map((person) => person.key)];
 }
 
 /** The DOM id of the control for a field path, so errors can be focused. */
@@ -140,6 +162,47 @@ export function tripFormReducer(state: TripFormState, action: TripFormAction): T
       );
       return { ...state, items: state.items.filter((item) => item.rowKey !== action.rowKey), errors };
     }
+    case "addPerson": {
+      const name = validateNewPerson(action.name, state.people);
+      if (!name.ok) return state;
+      // Added at the end, which is also where the server positions a new person.
+      const person = { key: `new:${state.nextPersonId}`, name: name.value };
+      return recheckPeople({
+        ...state,
+        people: [...state.people, person],
+        nextPersonId: state.nextPersonId + 1,
+      });
+    }
+    case "renamePerson": {
+      const people = state.people.map((person) =>
+        person.key === action.key ? { ...person, name: action.name } : person,
+      );
+      // Renaming one person can clear a "same name" error shown on another.
+      return recheckPeople({ ...state, people });
+    }
+    case "removePerson": {
+      const prefix = `people.${action.key}.`;
+      const errors = Object.fromEntries(
+        Object.entries(state.errors).filter(([path]) => !path.startsWith(prefix)),
+      );
+      return recheckPeople({
+        ...state,
+        people: state.people.filter((person) => person.key !== action.key),
+        items: removePersonFromItems(state.items, action.key),
+        errors,
+      });
+    }
+    case "setAssignees": {
+      const chosen = new Set(action.assigneeKeys);
+      const assigneeKeys = billOrder(state.people).filter((key) => chosen.has(key));
+      const items = state.items.map((item) =>
+        item.rowKey === action.rowKey ? { ...item, assigneeKeys } : item,
+      );
+      // Shown straight away: there's no blur for a group of chips.
+      const path = itemPath(action.rowKey, "assignees");
+      const next = { ...state, items };
+      return withError(next, path, currentErrors(next)[path]);
+    }
     case "review": {
       const errors = currentErrors(state);
       const first = Object.keys(errors)[0];
@@ -149,7 +212,7 @@ export function tripFormReducer(state: TripFormState, action: TripFormAction): T
     case "backToEdit":
       return { ...state, step: "edit", saveError: null };
     case "saveFailed": {
-      const errors = byRowKey(action.fieldErrors, state.items);
+      const errors = byStableKey(action.fieldErrors, state);
       const first = Object.keys(errors)[0];
       // Field errors go back onto the form; anything else stays on the review screen.
       if (first === undefined) return { ...state, saveError: action.message };
@@ -160,18 +223,35 @@ export function tripFormReducer(state: TripFormState, action: TripFormAction): T
 
 function currentErrors(state: TripFormState): Record<string, string> {
   const result = validateForm(state);
-  return result.ok ? {} : byRowKey(result.fieldErrors, state.items);
+  return result.ok ? {} : byStableKey(result.fieldErrors, state);
 }
 
-/** `items.2.unitPrice` -> `items.r5.unitPrice`, using the rows' order. */
-function byRowKey(fieldErrors: Record<string, string>, items: FormItem[]): Record<string, string> {
+/**
+ * `items.2.unitPrice` -> `items.r5.unitPrice` and `people.1.name` -> `people.new:2.name`,
+ * using the order of the rows and people.
+ */
+function byStableKey(
+  fieldErrors: Record<string, string>,
+  state: Pick<TripFormState, "items" | "people">,
+): Record<string, string> {
   const mapped: Record<string, string> = {};
   for (const [path, message] of Object.entries(fieldErrors)) {
-    const match = /^items\.(\d+)\.(.+)$/.exec(path);
-    const rowKey = match ? items[Number(match[1])]?.rowKey : undefined;
-    mapped[match && rowKey ? itemPath(rowKey, match[2]) : path] = message;
+    const match = /^(items|people)\.(\d+)\.(.+)$/.exec(path);
+    const list: { rowKey?: string; key?: string }[] | undefined =
+      match?.[1] === "items" ? state.items : match?.[1] === "people" ? state.people : undefined;
+    const entry = match && list ? list[Number(match[2])] : undefined;
+    const key = entry?.rowKey ?? entry?.key;
+    mapped[match && key ? `${match[1]}.${key}.${match[3]}` : path] = message;
   }
   return mapped;
+}
+
+/** Re-checks every people error on show, since one person's name can affect another's. */
+function recheckPeople(state: TripFormState): TripFormState {
+  const current = currentErrors(state);
+  return Object.keys(state.errors)
+    .filter((path) => path.startsWith("people"))
+    .reduce((next, path) => withError(next, path, current[path]), state);
 }
 
 /** Once a field shows an error, it's re-checked as it's edited. */

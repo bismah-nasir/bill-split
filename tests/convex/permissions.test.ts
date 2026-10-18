@@ -33,6 +33,21 @@ describe("trips.get permissions", () => {
     expect(await alice.as.query(api.trips.get, { tripId })).toBeNull();
   });
 
+  it("never shows an unrelated user the names on a bill", async () => {
+    const { alice, carol } = await aliceWithTrip();
+    const tripId = await createTrip(alice.as, {
+      details: { title: "Dinner" },
+      people: [
+        { key: "new:1", name: "Ben" },
+        { key: "new:2", name: "Sara" },
+      ],
+      items: [{ assigneeKeys: ["owner", "new:1", "new:2"] }],
+    });
+    expect(await carol.as.query(api.trips.get, { tripId })).toBeNull();
+    const recent = await carol.as.query(api.trips.listRecent, {});
+    expect(JSON.stringify(recent)).not.toMatch(/Ben|Sara|Dinner/);
+  });
+
   it("returns null for an ID from another table", async () => {
     const { alice } = await aliceWithTrip();
     expect(await alice.as.query(api.trips.get, { tripId: alice.id })).toBeNull();

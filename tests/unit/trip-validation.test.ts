@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   OWNER_KEY,
+  validateNewPerson,
   validatePersonName,
   validateTripInput,
   type ItemInput,
@@ -151,6 +152,45 @@ describe("validateTripInput", () => {
     expect(errorsOf(details(), [item()], [{ key: OWNER_KEY, name: "Ben" }])).toHaveProperty("people");
   });
 
+  it("treats names that differ only in case or spacing as duplicates", () => {
+    const people = [
+      { key: "new:1", name: "Ben Ali" },
+      { key: "new:2", name: "  BEN   ali " },
+    ];
+    expect(errorsOf(details(), [item()], people)).toEqual({
+      "people.1.name": "Someone on this bill already has that name",
+    });
+  });
+
+  it("allows 19 people besides the owner, but not 20", () => {
+    const people = (count: number) =>
+      Array.from({ length: count }, (_, index) => ({ key: `new:${index}`, name: `Person ${index}` }));
+    expect(errorsOf(details(), [item()], people(19))).toEqual({});
+    expect(errorsOf(details(), [item()], people(20))).toEqual({
+      people: "A bill can have at most 20 people, including you",
+    });
+  });
+
+  it("needs a name of 1–40 characters", () => {
+    expect(errorsOf(details(), [item()], [{ key: "new:1", name: "   " }])).toEqual({
+      "people.0.name": "Enter a name",
+    });
+    expect(errorsOf(details(), [item()], [{ key: "new:1", name: "x".repeat(41) }])).toEqual({
+      "people.0.name": "Name must be 40 characters or fewer",
+    });
+    expect(errorsOf(details(), [item()], [{ key: "new:1", name: "x".repeat(40) }])).toEqual({});
+  });
+
+  it("rejects repeated person keys and the owner's key", () => {
+    expect(
+      errorsOf(details(), [item()], [
+        { key: "new:1", name: "Ben" },
+        { key: "new:1", name: "Sara" },
+      ]),
+    ).toHaveProperty("people");
+    expect(errorsOf(details(), [item()], [{ key: OWNER_KEY, name: "Ben" }])).toHaveProperty("people");
+  });
+
   it("allows dates up to one year ahead", () => {
     expect(errorsOf(details({ tripDate: "2027-10-17" }), [item()])).toEqual({});
     expect(errorsOf(details({ tripDate: "2027-10-18" }), [item()])).toEqual({
@@ -171,6 +211,36 @@ describe("validatePersonName", () => {
     expect(validatePersonName("x".repeat(41))).toEqual({
       ok: false,
       error: "Name must be 40 characters or fewer",
+    });
+  });
+});
+
+describe("validateNewPerson", () => {
+  const ben = [{ name: "Ben" }];
+
+  it("accepts a trimmed new name", () => {
+    expect(validateNewPerson("  Sara ", ben)).toEqual({ ok: true, value: "Sara" });
+  });
+
+  it("rejects empty, too long and duplicate names", () => {
+    expect(validateNewPerson(" ", ben)).toEqual({ ok: false, error: "Enter a name" });
+    expect(validateNewPerson("x".repeat(41), ben)).toEqual({
+      ok: false,
+      error: "Name must be 40 characters or fewer",
+    });
+    expect(validateNewPerson("ben", ben)).toEqual({
+      ok: false,
+      error: "Someone on this bill already has that name",
+    });
+    expect(validateNewPerson(" BEN ", ben)).toMatchObject({ ok: false });
+  });
+
+  it("refuses a 21st person", () => {
+    const nineteen = Array.from({ length: 19 }, (_, index) => ({ name: `Person ${index}` }));
+    expect(validateNewPerson("Zoe", nineteen.slice(1))).toEqual({ ok: true, value: "Zoe" });
+    expect(validateNewPerson("Zoe", nineteen)).toEqual({
+      ok: false,
+      error: "A bill can have at most 20 people, including you",
     });
   });
 });

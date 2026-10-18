@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { MoneyText } from "@/components/ui/money-text";
 import { TextField } from "@/components/ui/text-field";
-import { lineTotalPaisa, parseQuantityToMilli, parseRupeesToPaisa } from "@/domain/money";
+import { formatPaisa } from "@/domain/format";
+import { allocateEqually, lineTotalPaisa, parseQuantityToMilli, parseRupeesToPaisa } from "@/domain/money";
 import { cn } from "@/lib/utils";
 
+import { ParticipantPicker, type PickerPerson } from "./participant-picker";
 import { fieldId, itemPath, type FormItem, type ItemField } from "./trip-form-state";
 
 const DETAIL_FIELDS: { field: ItemField; label: string; placeholder?: string }[] = [
@@ -23,11 +25,14 @@ type ItemRowProps = {
   item: FormItem;
   index: number;
   errors: Record<string, string>;
+  /** Everyone on the bill, in bill order, labelled as the chips show them. */
+  people: PickerPerson[];
   canRemove: boolean;
   /** Shown under the row, e.g. the "Only know the total?" hint on the first one. */
   hint?: string;
   onChange: (field: ItemField, value: string) => void;
   onBlur: (field: ItemField) => void;
+  onAssigneesChange: (keys: string[]) => void;
   onRemove: () => void;
   /** Enter in the price field adds the next row. */
   onAddItem: () => void;
@@ -38,10 +43,12 @@ export function ItemRow({
   item,
   index,
   errors,
+  people,
   canRemove,
   hint,
   onChange,
   onBlur,
+  onAssigneesChange,
   onRemove,
   onAddItem,
 }: ItemRowProps) {
@@ -124,7 +131,25 @@ export function ItemRow({
           </div>
         </div>
 
-        <p className="type-caption text-ink-muted">Paid by you</p>
+        {people.length < 2 ? (
+          <p className="type-caption text-ink-muted">Paid by you</p>
+        ) : (
+          <div className="flex flex-col gap-6">
+            <ParticipantPicker
+              id={fieldId(itemPath(item.rowKey, "assignees"))}
+              label={`Who pays for item ${number}`}
+              people={people}
+              selected={item.assigneeKeys}
+              error={errorOf("assignees")}
+              onChange={onAssigneesChange}
+            />
+            {lineTotal !== null && item.assigneeKeys.length > 0 && (
+              <p className="type-caption tabular-nums text-ink-muted">
+                {splitPreview(lineTotal, item.assigneeKeys, people)}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-col gap-12">
           <button
@@ -157,4 +182,18 @@ export function ItemRow({
       </Card>
     </li>
   );
+}
+
+/**
+ * "Ben pays Rs. 900.00", or "Split 3 ways: Rs. 1,666.67 / Rs. 1,666.67 / Rs. 1,666.66" in bill
+ * order, which is how the server allocates the extra paisa.
+ */
+function splitPreview(lineTotal: number, assigneeKeys: string[], people: PickerPerson[]): string {
+  const ordered = people.filter((person) => assigneeKeys.includes(person.key));
+  if (ordered.length === 1) {
+    const [payer] = ordered;
+    return `${payer.label} ${payer.label === "You" ? "pay" : "pays"} ${formatPaisa(lineTotal)}`;
+  }
+  const amounts = allocateEqually(lineTotal, ordered.map((person) => person.key));
+  return `Split ${amounts.length} ways: ${amounts.map((amount) => formatPaisa(amount.amountPaisa)).join(" / ")}`;
 }

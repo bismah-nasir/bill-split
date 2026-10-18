@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
 
-import { PageHeader } from "@/components/layout/page-header";
+import { useAccount } from "@/components/layout/account-gate";
 import { useResetAfterLeave } from "@/components/layout/use-reset-after-leave";
 import { billViewFromDetail } from "@/components/trips/bill-view";
+import { SplitSummary } from "@/components/trips/split-summary";
 import { CategoryBadge, OwnershipBadge, tripMetaLine } from "@/components/trips/trip-meta";
 import { TripSummary } from "@/components/trips/trip-summary";
 import { TripUnavailable } from "@/components/trips/trip-unavailable";
@@ -16,6 +17,7 @@ import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/loading-state";
 import { useToast } from "@/components/ui/toast";
+import { summaryLabel } from "@/domain/people";
 import { useDeleteTrip, useTrip } from "@/lib/db/trips";
 
 export function TripDetailView({ tripId }: { tripId: string }) {
@@ -26,6 +28,7 @@ export function TripDetailView({ tripId }: { tripId: string }) {
 
 function TripDetail({ tripId, onDeleted }: { tripId: string; onDeleted: () => void }) {
   const trip = useTrip(tripId);
+  const { user } = useAccount();
   const router = useRouter();
   const showToast = useToast();
   const { remove, isDeleting } = useDeleteTrip();
@@ -55,40 +58,52 @@ function TripDetail({ tripId, onDeleted }: { tripId: string; onDeleted: () => vo
   if (trip === null) return <TripUnavailable />;
 
   const isOwner = trip.viewerRole === "owner";
+  // Only the owner's own client knows their account name; it's never sent to anyone else.
+  const ownerName = isOwner ? user.name : null;
 
   return (
     <div className="flex flex-col gap-24">
       <div className="flex flex-col gap-12">
-        <PageHeader
+        {isOwner && (
+          <div className="flex justify-end gap-8">
+            <Button asChild variant="secondary">
+              <Link href={`/trips/${trip.id}/edit`}>
+                <Pencil aria-hidden className="size-icon-md" />
+                Edit
+              </Link>
+            </Button>
+            <Button
+              variant="danger-soft"
+              onClick={() => {
+                setDeleteError(null);
+                setConfirmOpen(true);
+              }}
+            >
+              <Trash2 aria-hidden className="size-icon-md" />
+              Delete
+            </Button>
+          </div>
+        )}
+        <SplitSummary
           title={trip.title}
-          description={tripMetaLine(trip.storeName, trip.tripDate)}
-          actions={
-            isOwner && (
-              <>
-                <Button asChild variant="secondary">
-                  <Link href={`/trips/${trip.id}/edit`}>
-                    <Pencil aria-hidden className="size-icon-md" />
-                    Edit
-                  </Link>
-                </Button>
-                <Button
-                  variant="danger-soft"
-                  onClick={() => {
-                    setDeleteError(null);
-                    setConfirmOpen(true);
-                  }}
-                >
-                  <Trash2 aria-hidden className="size-icon-md" />
-                  Delete
-                </Button>
-              </>
-            )
+          meta={tripMetaLine(trip.storeName, trip.tripDate)}
+          badges={
+            <>
+              <CategoryBadge category={trip.category} />
+              <OwnershipBadge isOwner={isOwner} />
+            </>
           }
+          totalPaisa={trip.totalPaisa}
+          lines={trip.shares.map((share) => {
+            const person = trip.people.find((candidate) => candidate.personId === share.personId);
+            return {
+              key: share.personId,
+              label: person ? summaryLabel(person, ownerName) : "",
+              totalPaisa: share.totalPaisa,
+            };
+          })}
+          reconciled={trip.reconciled}
         />
-        <div className="flex flex-wrap items-center gap-8">
-          <CategoryBadge category={trip.category} />
-          <OwnershipBadge isOwner={isOwner} />
-        </div>
       </div>
       <TripSummary bill={billViewFromDetail(trip)} />
 

@@ -6,13 +6,17 @@ import { ChevronDown, CircleAlert, CircleCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { MoneyText } from "@/components/ui/money-text";
+import { formatPaisa } from "@/domain/format";
 import { cn } from "@/lib/utils";
 
 import type { BillViewShare } from "./bill-view";
 
 type ParticipantSharesProps = { shares: BillViewShare[]; reconciled: boolean };
 
-/** Each person's total, expandable to the items that make it up, and the reconciliation check. */
+/**
+ * Each person's total, expandable to the items that make it up, and the reconciliation check.
+ * The viewer's own share is labelled "Your share" and starts expanded.
+ */
 export function ParticipantShares({ shares, reconciled }: ParticipantSharesProps) {
   const headingId = React.useId();
   return (
@@ -31,7 +35,7 @@ export function ParticipantShares({ shares, reconciled }: ParticipantSharesProps
 }
 
 function ShareRow({ share }: { share: BillViewShare }) {
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = React.useState(share.isViewer);
   const listId = React.useId();
 
   return (
@@ -43,7 +47,9 @@ function ShareRow({ share }: { share: BillViewShare }) {
         onClick={() => setIsOpen((open) => !open)}
         className="flex min-h-tap w-full items-center justify-between gap-12 rounded-lg px-16 py-12 text-left transition-colors duration-fast ease-standard hover:bg-surface-subtle"
       >
-        <span className="min-w-0 truncate type-body-medium">{share.label}</span>
+        <span className="min-w-0 truncate type-body-medium">
+          {share.isViewer ? "Your share" : share.label}
+        </span>
         <span className="flex shrink-0 items-center gap-8">
           <MoneyText paisa={share.totalPaisa} className="font-semibold" />
           <ChevronDown
@@ -62,7 +68,10 @@ function ShareRow({ share }: { share: BillViewShare }) {
               <span className="min-w-0 break-words text-ink-secondary">
                 {item.name}
                 {item.splitCount > 1 && (
-                  <span className="text-ink-muted"> (split {item.splitCount} ways)</span>
+                  <span className="text-ink-muted">
+                    {" "}
+                    (1/{item.splitCount} of {formatPaisa(item.lineTotalPaisa)})
+                  </span>
                 )}
               </span>
               <MoneyText paisa={item.amountPaisa} size="sm" />
@@ -74,7 +83,7 @@ function ShareRow({ share }: { share: BillViewShare }) {
   );
 }
 
-function ReconciliationBadge({ reconciled }: { reconciled: boolean }) {
+export function ReconciliationBadge({ reconciled }: { reconciled: boolean }) {
   if (reconciled) {
     return (
       <Badge variant="success" className="self-start">

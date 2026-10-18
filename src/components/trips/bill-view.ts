@@ -23,8 +23,10 @@ export type BillViewItem = {
 export type BillViewShare = {
   key: string;
   label: string;
+  /** The viewer's own share, shown as "Your share". */
+  isViewer: boolean;
   totalPaisa: number;
-  items: { key: string; name: string; amountPaisa: number; splitCount: number }[];
+  items: { key: string; name: string; amountPaisa: number; splitCount: number; lineTotalPaisa: number }[];
 };
 
 export type BillView = {
@@ -36,7 +38,10 @@ export type BillView = {
   reconciled: boolean;
 };
 
-/** The breakdown of a bill that hasn't been saved yet, computed exactly as the server will. */
+/**
+ * The breakdown of a bill that hasn't been saved yet, computed exactly as the server will.
+ * Only the owner fills in the form, so the owner is the viewer.
+ */
 export function billViewFromForm(trip: ValidatedTrip): BillView {
   const labels = new Map([
     [OWNER_KEY, "You"],
@@ -65,12 +70,14 @@ export function billViewFromForm(trip: ValidatedTrip): BillView {
     shares: bill.shares.map((share) => ({
       key: share.personKey,
       label: labelOf(share.personKey),
+      isViewer: share.personKey === OWNER_KEY,
       totalPaisa: share.totalPaisa,
       items: share.contributions.map((contribution) => ({
         key: String(contribution.itemIndex),
         name: trip.items[contribution.itemIndex].name,
         amountPaisa: contribution.amountPaisa,
         splitCount: contribution.splitCount,
+        lineTotalPaisa: bill.items[contribution.itemIndex].lineTotalPaisa,
       })),
     })),
     reconciled: bill.reconciled,
@@ -82,6 +89,7 @@ export function billViewFromDetail(trip: TripDetail): BillView {
     trip.people.map((person) => [person.personId, personLabel(person, trip.viewerPersonId)]),
   );
   const labelOf = (personId: string) => labels.get(personId) ?? "";
+  const lineTotals = new Map(trip.items.map((item) => [item.id, item.lineTotalPaisa]));
 
   return {
     people: [...labels.values()],
@@ -102,12 +110,14 @@ export function billViewFromDetail(trip: TripDetail): BillView {
     shares: trip.shares.map((share) => ({
       key: share.personId,
       label: labelOf(share.personId),
+      isViewer: share.personId === trip.viewerPersonId,
       totalPaisa: share.totalPaisa,
       items: share.items.map((item) => ({
         key: item.itemId,
         name: item.name,
         amountPaisa: item.amountPaisa,
         splitCount: item.splitCount,
+        lineTotalPaisa: lineTotals.get(item.itemId) ?? item.amountPaisa,
       })),
     })),
     reconciled: trip.reconciled,

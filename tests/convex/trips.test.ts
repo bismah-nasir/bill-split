@@ -477,6 +477,213 @@ describe("trips.update", () => {
   });
 });
 
+describe("splitting between people without accounts", () => {
+  const dinner = {
+    details: { title: "Dinner", category: "restaurant" as const },
+    people: [
+      { key: "new:1", name: "Ben" },
+      { key: "new:2", name: "Sara" },
+    ],
+    items: [
+      { name: "Pizza", unitPrice: "5,000", assigneeKeys: ["owner", "new:1", "new:2"] },
+      { name: "Drink", unitPrice: "900", assigneeKeys: ["new:1"] },
+      { name: "Rice", unitPrice: "1,200", assigneeKeys: ["new:2", "owner"] },
+    ],
+  };
+
+  it("splits the PRD dinner to the paisa and reconciles", async () => {
+    const t = setupTest();
+    const alice = await createUser(t, "alice");
+    const tripId = await createTrip(alice.as, dinner);
+
+    const trip = await alice.as.query(api.trips.get, { tripId });
+    expect(trip?.totalPaisa).toBe(710000);
+    expect(trip?.reconciled).toBe(true);
+    expect(trip?.people.map((person) => [person.isOwner, person.name, person.username])).toEqual([
+      [true, null, "alice"],
+      [false, "Ben", null],
+      [false, "Sara", null],
+    ]);
+    // Pizza 500000 / 3 = 166666 r 2: the extra paisa go to Alice and Ben, first in bill order.
+    expect(trip?.shares.map((share) => share.totalPaisa)).toEqual([226667, 256667, 226666]);
+    expect(trip?.shares[0].items.map((item) => [item.name, item.amountPaisa, item.splitCount])).toEqual([
+      ["Pizza", 166667, 3],
+      ["Rice", 60000, 2],
+    ]);
+    // Assignees come back in bill order, whatever order they were sent in.
+    const [owner, ben, sara] = trip?.people.map((person) => person.personId) ?? [];
+    expect(trip?.items[2].assignees).toEqual([
+      { personId: owner, amountPaisa: 60000 },
+      { personId: sara, amountPaisa: 60000 },
+    ]);
+    expect(trip?.items[1].assignees).toEqual([{ personId: ben, amountPaisa: 90000 }]);
+
+    const [card] = await alice.as.query(api.trips.listRecent, {});
+    expect(card.peopleLabels).toEqual(["You", "Ben", "Sara"]);
+  });
+
+  it("gives everyone a share, including people with Rs. 0", async () => {
+    const t = setupTest();
+    const alice = await createUser(t, "alice");
+    const tripId = await createTrip(alice.as, { people: [{ key: "new:1", name: "Ben" }] });
+
+    const trip = await alice.as.query(api.trips.get, { tripId });
+    expect(trip?.shares.map((share) => [share.totalPaisa, share.items.length])).toEqual([
+      [50000, 1],
+      [0, 0],
+    ]);
+  });
+
+  it("rejects duplicate names, ignoring case and spaces", async () => {
+    const t = setupTest();
+    const alice = await createUser(t, "alice");
+    const data = await errorDataOf(() =>
+      createTrip(alice.as, {
+        people: [
+          { key: "new:1", name: "Ben" },
+          { key: "new:2", name: " ben " },
+        ],
+      }),
+    );
+    expect(data).toMatchObject({
+      code: "VALIDATION",
+      fieldErrors: { "people.1.name": "Someone on this bill already has that name" },
+    });
+  });
+
+  it("rejects more than 20 people including the owner", async () => {
+    const t = setupTest();
+    const alice = await createUser(t, "alice");
+    const people = Array.from({ length: 20 }, (_, index) => ({ key: `new:${index}`, name: `Person ${index}` }));
+
+    expect(await errorDataOf(() => createTrip(alice.as, { people }))).toMatchObject({
+      code: "VALIDATION",
+      fieldErrors: { people: expect.any(String) },
+    });
+    const tripId = await createTrip(alice.as, { people: people.slice(1) });
+    expect((await rowsOf(t, tripId)).people).toHaveLength(20);
+  });
+
+  it("deduplicates repeated assignee keys", async () => {
+    const t = setupTest();
+    const alice = await createUser(t, "alice");
+    const tripId = await createTrip(alice.as, {
+      people: [{ key: "new:1", name: "Ben" }],
+      items: [{ unitPrice: "100", assigneeKeys: ["new:1", "owner", "new:1"] }],
+    });
+    const { assignments } = await rowsOf(t, tripId);
+    expect(assignments.map((row) => row.allocatedAmountPaisa)).toEqual([5000, 5000]);
+  });
+
+  it("keeps every amount when a person is renamed", async () => {
+    const t = setupTest();
+    const alice = await createUser(t, "alice");
+    const tripId = await createTrip(alice.as, dinner);
+    const before = await alice.as.query(api.trips.get, { tripId });
+    if (!before) throw new Error("Expected the bill");
+    const [, ben, sara] = before.people;
+
+    await updateTrip(alice.as, tripId, {
+      ...dinner,
+      people: [
+        { key: ben.personId, personId: ben.personId, name: "Ben D." },
+        { key: sara.personId, personId: sara.personId, name: "Sara" },
+      ],
+      items: before.items.map((item) => ({
+        itemId: item.id,
+        name: item.name,
+        unitPrice: String(item.unitPricePaisa / 100),
+        assigneeKeys: item.assignees.map((assignee) =>
+          assignee.personId === before.viewerPersonId ? "owner" : assignee.personId,
+        ),
+      })),
+    });
+
+    const after = await alice.as.query(api.trips.get, { tripId });
+    expect(after?.people[1]).toMatchObject({ personId: ben.personId, name: "Ben D." });
+    expect(after?.shares).toEqual(before.shares);
+    expect(after?.items).toEqual(before.items);
+    const positions = (await rowsOf(t, tripId)).people.map((person) => [person.name ?? null, person.position]);
+    expect(positions).toEqual([
+      [null, 0],
+      ["Ben D.", 1],
+      ["Sara", 2],
+    ]);
+  });
+
+  it("adds a new person after everyone else without moving anyone's extra paisa", async () => {
+    const t = setupTest();
+    const alice = await createUser(t, "alice");
+    const tripId = await createTrip(alice.as, {
+      people: [{ key: "new:1", name: "Ben" }],
+      items: [{ name: "Pizza", unitPrice: "0.05", assigneeKeys: ["owner", "new:1"] }],
+    });
+    const { people, items } = await rowsOf(t, tripId);
+    const [, ben] = people;
+    const [pizza] = items;
+
+    // Zoe is listed first but gets the next position, so the extra paisa of 5 / 3 stay with
+    // Alice and Ben.
+    await updateTrip(alice.as, tripId, {
+      people: [
+        { key: "new:1", name: "Zoe" },
+        { key: ben._id, personId: ben._id, name: "Ben" },
+      ],
+      items: [{ itemId: pizza._id, name: "Pizza", unitPrice: "0.05", assigneeKeys: ["new:1", ben._id, "owner"] }],
+    });
+    const trip = await alice.as.query(api.trips.get, { tripId });
+    expect(trip?.people.map((person) => person.name)).toEqual([null, "Ben", "Zoe"]);
+    expect(trip?.shares.map((share) => share.totalPaisa)).toEqual([2, 2, 1]);
+  });
+
+  it("removes a person with their assignments, leaving the others' positions alone", async () => {
+    const t = setupTest();
+    const alice = await createUser(t, "alice");
+    const tripId = await createTrip(alice.as, dinner);
+    const before = await rowsOf(t, tripId);
+    const [owner, ben, sara] = before.people;
+    const [pizza, drink, rice] = before.items;
+
+    // What the form sends after removing Sara: Rice is Alice's alone, Pizza is Alice's and Ben's.
+    await updateTrip(alice.as, tripId, {
+      ...dinner,
+      people: [{ key: ben._id, personId: ben._id, name: "Ben" }],
+      items: [
+        { itemId: pizza._id, name: "Pizza", unitPrice: "5000", assigneeKeys: ["owner", ben._id] },
+        { itemId: drink._id, name: "Drink", unitPrice: "900", assigneeKeys: [ben._id] },
+        { itemId: rice._id, name: "Rice", unitPrice: "1200", assigneeKeys: ["owner"] },
+      ],
+    });
+
+    const after = await rowsOf(t, tripId);
+    expect(after.people.map((person) => [person._id, person.position])).toEqual([
+      [owner._id, 0],
+      [ben._id, 1],
+    ]);
+    expect(await t.run((ctx) => ctx.db.get(sara._id))).toBeNull();
+    expect(after.assignments.some((row) => row.personId === sara._id)).toBe(false);
+    const trip = await alice.as.query(api.trips.get, { tripId });
+    expect(trip?.shares.map((share) => share.totalPaisa)).toEqual([250000 + 120000, 250000 + 90000]);
+    expect(trip?.reconciled).toBe(true);
+  });
+
+  it("rejects a person from another trip and changes nothing", async () => {
+    const t = setupTest();
+    const alice = await createUser(t, "alice");
+    const tripA = await createTrip(alice.as, { details: { title: "A" } });
+    const tripB = await createTrip(alice.as, { details: { title: "B" }, people: [{ key: "new:1", name: "Ben" }] });
+    const [, benOnB] = (await rowsOf(t, tripB)).people;
+    const before = { a: await rowsOf(t, tripA), b: await rowsOf(t, tripB) };
+
+    const data = await errorDataOf(() =>
+      updateTrip(alice.as, tripA, { people: [{ key: benOnB._id, personId: benOnB._id, name: "Ben" }] }),
+    );
+    expect(data).toMatchObject({ code: "VALIDATION" });
+    expect(await rowsOf(t, tripA)).toEqual(before.a);
+    expect(await rowsOf(t, tripB)).toEqual(before.b);
+  });
+});
+
 describe("trips.remove", () => {
   it("deletes the trip with all its people, items and assignments, and nothing else", async () => {
     const t = setupTest();
