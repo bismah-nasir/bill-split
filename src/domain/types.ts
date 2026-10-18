@@ -88,3 +88,31 @@ export type TripDetail = {
   shares: TripDetailShare[];
   reconciled: boolean;
 };
+
+/**
+ * A pending invitation, as its invitee sees it on Invitations → Received. Only what they need
+ * to decide: no items, totals or other people.
+ */
+export type InvitationReceived = {
+  invitationId: string;
+  tripTitle: string;
+  storeName: string | null;
+  tripDate: string;
+  ownerUsername: string;
+  /** The name the owner typed for the person they'd be linked to, e.g. "Ben". */
+  personName: string;
+  invitedAt: number;
+};
+
+/** An invitation the owner sent, on Invitations → Sent. */
+export type InvitationSent = {
+  invitationId: string;
+  tripId: string;
+  tripTitle: string;
+  personName: string;
+  /** The invitee's username. */
+  username: string;
+  status: "pending" | "accepted" | "declined";
+  invitedAt: number;
+  respondedAt: number | null;
+};

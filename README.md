@@ -86,3 +86,4 @@ Every read is bounded. The caps live in `convex/lib/access.ts` (item and people 
 | `HISTORY_PAGE_SIZE` | 20 | Bill History "Load more" step |
 | `MAX_ITEMS_PER_TRIP` | 200 | Items on one bill |
 | `MAX_PEOPLE_PER_TRIP` | 20 | People on one bill, including the owner |
+| `INVITATION_LIST_LIMIT` | 50 | Invitations shown on Invitations → Received and Sent (the nav badge shows "50+"); in `convex/invitations.ts` |

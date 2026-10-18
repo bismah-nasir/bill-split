@@ -135,8 +135,41 @@ async function loadBillPeople(
         isViewer: row.userId === viewerId,
         name: isOwner ? null : (row.name ?? ""),
         username: account?.username ?? null,
-        link: isOwnerViewer && !isOwner ? { state: row.userId ? "linked" : "none" } : null,
+        link: isOwnerViewer && !isOwner ? await linkState(ctx, row) : null,
       };
     }),
   );
+}
+
+/** Invitations considered per person when working out their link state. */
+const LINK_STATE_INVITATIONS = 50;
+
+/**
+ * A person's link state, for the owner: linked; otherwise their pending invitation; otherwise
+ * "declined" when their most recent invitation was declined; otherwise none (never invited,
+ * cancelled or unlinked).
+ */
+async function linkState(ctx: QueryCtx, person: Doc<"tripPeople">): Promise<NonNullable<BillPerson["link"]>> {
+  if (person.userId !== undefined) return { state: "linked" };
+  const invitations = await ctx.db
+    .query("tripInvitations")
+    .withIndex("by_person_status", (q) => q.eq("personId", person._id))
+    .take(LINK_STATE_INVITATIONS);
+  const latest =
+    invitations.find((invitation) => invitation.status === "pending") ??
+    invitations.reduce<Doc<"tripInvitations"> | undefined>(
+      (newest, invitation) => (newest === undefined || invitation.updatedAt > newest.updatedAt ? invitation : newest),
+      undefined,
+    );
+  if (latest === undefined || (latest.status !== "pending" && latest.status !== "declined")) {
+    return { state: "none" };
+  }
+  const invitee = await ctx.db.get(latest.inviteeUserId);
+  return {
+    state: latest.status,
+    invitationId: latest._id,
+    username: invitee?.username ?? "",
+    invitedAt: latest.createdAt,
+    respondedAt: latest.respondedAt ?? null,
+  };
 }

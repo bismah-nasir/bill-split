@@ -184,8 +184,11 @@ export async function writeTripUpdate(
 
   const keptPersonIds = new Set(people.flatMap((person) => (person.saved ? [person.saved._id] : [])));
   for (const person of savedPeople) {
-    // Phase 6: also delete the person's invitations, which ends a linked account's access.
-    if (person.role === "person" && !keptPersonIds.has(person._id)) await ctx.db.delete(person._id);
+    if (person.role === "person" && !keptPersonIds.has(person._id)) {
+      // Deleting the person (with their invitations) ends a linked account's access.
+      await deletePersonInvitations(ctx, person._id);
+      await ctx.db.delete(person._id);
+    }
   }
   const personIds = new Map<string, Id<"tripPeople">>([[OWNER_KEY, ownerRow._id]]);
   for (const person of people) {
@@ -250,7 +253,7 @@ export async function writeTripUpdate(
 
 /**
  * Deletes a trip and everything that belongs to it, leaving no orphans: assignments, items,
- * people, then the trip itself (Phase 6 adds invitations before people).
+ * invitations, people, then the trip itself.
  */
 export async function deleteTrip(ctx: MutationCtx, tripId: Id<"trips">): Promise<void> {
   const assignments = await ctx.db
@@ -263,12 +266,43 @@ export async function deleteTrip(ctx: MutationCtx, tripId: Id<"trips">): Promise
     .withIndex("by_trip", (q) => q.eq("tripId", tripId))
     .take(MAX_ITEMS_PER_TRIP);
   for (const item of items) await ctx.db.delete(item._id);
+  await deleteInBatches(ctx, () =>
+    ctx.db
+      .query("tripInvitations")
+      .withIndex("by_trip", (q) => q.eq("tripId", tripId))
+      .take(INVITATION_DELETE_BATCH),
+  );
   const people = await ctx.db
     .query("tripPeople")
     .withIndex("by_trip", (q) => q.eq("tripId", tripId))
     .take(MAX_PEOPLE_PER_TRIP);
   for (const person of people) await ctx.db.delete(person._id);
   await ctx.db.delete(tripId);
+}
+
+const INVITATION_DELETE_BATCH = 100;
+
+/** Every invitation for one person on a bill, whatever its status. */
+export async function deletePersonInvitations(ctx: MutationCtx, personId: Id<"tripPeople">): Promise<void> {
+  await deleteInBatches(ctx, () =>
+    ctx.db
+      .query("tripInvitations")
+      .withIndex("by_person_status", (q) => q.eq("personId", personId))
+      .take(INVITATION_DELETE_BATCH),
+  );
+}
+
+/**
+ * Invitations aren't capped per trip (one per invited account), so they're deleted a bounded
+ * batch at a time until none are left.
+ */
+async function deleteInBatches(
+  ctx: MutationCtx,
+  nextBatch: () => Promise<Doc<"tripInvitations">[]>,
+): Promise<void> {
+  for (let batch = await nextBatch(); batch.length > 0; batch = await nextBatch()) {
+    for (const row of batch) await ctx.db.delete(row._id);
+  }
 }
 
 /** The trip fields that follow from its details and items. */

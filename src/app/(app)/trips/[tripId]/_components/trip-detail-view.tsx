@@ -8,6 +8,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { useAccount } from "@/components/layout/account-gate";
 import { useResetAfterLeave } from "@/components/layout/use-reset-after-leave";
 import { billViewFromDetail } from "@/components/trips/bill-view";
+import { PeopleList } from "@/components/trips/people-list";
 import { SplitSummary } from "@/components/trips/split-summary";
 import { CategoryBadge, OwnershipBadge, tripMetaLine } from "@/components/trips/trip-meta";
 import { TripSummary } from "@/components/trips/trip-summary";
@@ -90,7 +91,7 @@ function TripDetail({ tripId, onDeleted }: { tripId: string; onDeleted: () => vo
           badges={
             <>
               <CategoryBadge category={trip.category} />
-              <OwnershipBadge isOwner={isOwner} />
+              <OwnershipBadge isOwner={isOwner} ownerUsername={trip.owner.username} />
             </>
           }
           totalPaisa={trip.totalPaisa}
@@ -105,6 +106,7 @@ function TripDetail({ tripId, onDeleted }: { tripId: string; onDeleted: () => vo
           reconciled={trip.reconciled}
         />
       </div>
+      <PeopleList tripId={trip.id} people={trip.people} isOwner={isOwner} />
       <TripSummary bill={billViewFromDetail(trip)} />
 
       {isOwner && (

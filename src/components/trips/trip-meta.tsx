@@ -11,6 +11,8 @@ export function CategoryBadge({ category }: { category: Category }) {
   return <Badge>{categoryLabel(category)}</Badge>;
 }
 
-export function OwnershipBadge({ isOwner }: { isOwner: boolean }) {
-  return isOwner ? <Badge variant="primary">Owned</Badge> : <Badge>Shared with you</Badge>;
+/** "Owned", or for a bill shared with the viewer "Shared by @alice" (or just "Shared" in lists). */
+export function OwnershipBadge({ isOwner, ownerUsername }: { isOwner: boolean; ownerUsername?: string }) {
+  if (isOwner) return <Badge variant="primary">Owned</Badge>;
+  return <Badge>{ownerUsername ? `Shared by @${ownerUsername}` : "Shared"}</Badge>;
 }

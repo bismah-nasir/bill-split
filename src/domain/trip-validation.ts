@@ -76,8 +76,8 @@ export function validatePersonName(input: string): Result<string> {
   return { ok: true, value: name };
 }
 
-const PEOPLE_LIMIT_MESSAGE = `A bill can have at most ${MAX_PEOPLE_PER_TRIP} people, including you`;
-const DUPLICATE_NAME_MESSAGE = "Someone on this bill already has that name";
+export const PEOPLE_LIMIT_MESSAGE = `A bill can have at most ${MAX_PEOPLE_PER_TRIP} people, including you`;
+export const DUPLICATE_NAME_MESSAGE = "Someone on this bill already has that name";
 
 /**
  * A name typed into **Add person**, checked against everyone already on the bill (`people`,

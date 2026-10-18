@@ -39,13 +39,15 @@ type TripFormProps = {
   initialValue: TripFormValue;
   /** Saves the bill. Resolves to `null` on success, or to the error to show. */
   onSubmit: (value: TripFormValue) => Promise<AppError | null>;
+  /** Usernames of saved people linked to an account, by person key (edit only). */
+  linkedUsernames?: Record<string, string>;
   ref?: React.Ref<TripFormHandle>;
 };
 
 const SAVE_FAILED_MESSAGE = "Couldn't save your bill. Your changes are still here. Try again.";
 
 /** Create or edit a bill: details, people and items, then a review of the split before saving. */
-export function TripForm({ mode, initialValue, onSubmit, ref }: TripFormProps) {
+export function TripForm({ mode, initialValue, onSubmit, linkedUsernames, ref }: TripFormProps) {
   const [state, dispatch] = React.useReducer(tripFormReducer, initialValue, initTripFormState);
   const [isSaving, setIsSaving] = React.useState(false);
 
@@ -103,7 +105,13 @@ export function TripForm({ mode, initialValue, onSubmit, ref }: TripFormProps) {
         onChange={(field, value) => dispatch({ type: "setDetail", field, value })}
         onBlur={(path) => dispatch({ type: "blur", path })}
       />
-      <PeopleEditor people={state.people} items={state.items} errors={state.errors} dispatch={dispatch} />
+      <PeopleEditor
+        people={state.people}
+        items={state.items}
+        errors={state.errors}
+        dispatch={dispatch}
+        linkedUsernames={linkedUsernames}
+      />
       <ItemEditor
         items={state.items}
         errors={state.errors}

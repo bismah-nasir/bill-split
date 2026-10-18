@@ -16,12 +16,14 @@ type PeopleEditorProps = {
   items: FormItem[];
   errors: Record<string, string>;
   dispatch: React.Dispatch<TripFormAction>;
+  /** Usernames of saved people linked to an account, by person key (edit only). */
+  linkedUsernames?: Record<string, string>;
 };
 
 const HINT = "Add anyone, with or without an account. You can connect people to their accounts after saving.";
 
 /** The bill's people: "You", then everyone the owner added by name, each renamable and removable. */
-export function PeopleEditor({ people, items, errors, dispatch }: PeopleEditorProps) {
+export function PeopleEditor({ people, items, errors, dispatch, linkedUsernames = {} }: PeopleEditorProps) {
   const headingId = React.useId();
   const hintId = React.useId();
   const addInputRef = React.useRef<HTMLInputElement>(null);
@@ -45,7 +47,8 @@ export function PeopleEditor({ people, items, errors, dispatch }: PeopleEditorPr
   }
 
   function requestRemove(person: PersonInput) {
-    if (itemCountFor(items, person.key) > 0) {
+    // Ask first when it takes them off items or ends an account's access.
+    if (itemCountFor(items, person.key) > 0 || linkedUsernames[person.key]) {
       removedRef.current = false;
       setPendingRemoval(person);
       return;
@@ -141,7 +144,11 @@ export function PeopleEditor({ people, items, errors, dispatch }: PeopleEditorPr
           if (!open) setPendingRemoval(null);
         }}
         title={`Remove ${displayName(pendingRemoval)}?`}
-        description={pendingRemoval ? removalWarning(pendingRemoval, itemCountFor(items, pendingRemoval.key)) : ""}
+        description={
+          pendingRemoval
+            ? removalWarning(pendingRemoval, itemCountFor(items, pendingRemoval.key), linkedUsernames[pendingRemoval.key])
+            : ""
+        }
         confirmLabel="Remove"
         variant="danger"
         onConfirm={() => {
@@ -169,12 +176,17 @@ function displayName(person: PersonInput | null): string {
   return person?.name.trim() || "this person";
 }
 
-/** §4.4: "Ben is on 3 items. Removing Ben takes them off shared items, and items only Ben pays for move to you." */
-function removalWarning(person: PersonInput, itemCount: number): string {
+/**
+ * §4.4: "Ben is on 3 items. Removing Ben takes them off shared items, and items only Ben pays
+ * for move to you.", plus "@ben_doe will lose access to this bill." for a linked person.
+ */
+function removalWarning(person: PersonInput, itemCount: number, linkedUsername: string | undefined): string {
+  const access = linkedUsername ? `@${linkedUsername} will lose access to this bill.` : "";
+  if (itemCount === 0) return access;
   const items = `${itemCount} ${itemCount === 1 ? "item" : "items"}`;
   const name = person.name.trim();
-  if (!name) {
-    return `This person is on ${items}. Removing them takes them off shared items, and items only they pay for move to you.`;
-  }
-  return `${name} is on ${items}. Removing ${name} takes them off shared items, and items only ${name} pays for move to you.`;
+  const itemsWarning = name
+    ? `${name} is on ${items}. Removing ${name} takes them off shared items, and items only ${name} pays for move to you.`
+    : `This person is on ${items}. Removing them takes them off shared items, and items only they pay for move to you.`;
+  return access ? `${itemsWarning} ${access}` : itemsWarning;
 }

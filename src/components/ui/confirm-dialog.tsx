@@ -5,6 +5,7 @@ import { AlertDialog as AlertDialogPrimitive } from "radix-ui";
 
 import { Alert } from "./alert";
 import { Button } from "./button";
+import { dialogContentClassName, dialogOverlayClassName, dialogPositionerClassName } from "./dialog";
 
 type ConfirmDialogProps = {
   open: boolean;
@@ -51,29 +52,29 @@ export function ConfirmDialog({
       }}
     >
       <AlertDialogPrimitive.Portal>
-        <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay motion-safe:animate-fade-in" />
-        <AlertDialogPrimitive.Content
-          onCloseAutoFocus={onCloseAutoFocus}
-          className="fixed inset-x-16 top-1/2 z-50 mx-auto flex max-w-form -translate-y-1/2 flex-col gap-16 rounded-lg bg-surface-elevated p-24 shadow-floating motion-safe:animate-dialog-in">
-          <div className="flex flex-col gap-8">
-            <AlertDialogPrimitive.Title className="type-h3">{title}</AlertDialogPrimitive.Title>
-            <AlertDialogPrimitive.Description className="type-body-sm text-ink-secondary">
-              {description}
-            </AlertDialogPrimitive.Description>
-          </div>
-          {error && <Alert>{error}</Alert>}
-          <div className="flex flex-col-reverse gap-8 sm:flex-row sm:justify-end">
-            <AlertDialogPrimitive.Cancel asChild>
-              <Button variant="secondary" disabled={isPending}>
-                {cancelLabel}
+        <AlertDialogPrimitive.Overlay className={dialogOverlayClassName} />
+        <div className={dialogPositionerClassName}>
+          <AlertDialogPrimitive.Content onCloseAutoFocus={onCloseAutoFocus} className={dialogContentClassName}>
+            <div className="flex flex-col gap-8">
+              <AlertDialogPrimitive.Title className="type-h3">{title}</AlertDialogPrimitive.Title>
+              <AlertDialogPrimitive.Description className="type-body-sm text-ink-secondary">
+                {description}
+              </AlertDialogPrimitive.Description>
+            </div>
+            {error && <Alert>{error}</Alert>}
+            <div className="flex flex-col-reverse gap-8 sm:flex-row sm:justify-end">
+              <AlertDialogPrimitive.Cancel asChild>
+                <Button variant="secondary" disabled={isPending}>
+                  {cancelLabel}
+                </Button>
+              </AlertDialogPrimitive.Cancel>
+              {/* Not `AlertDialog.Action`, which would close the dialog before the action finishes. */}
+              <Button variant={variant} disabled={isPending} onClick={onConfirm}>
+                {isPending && pendingLabel ? pendingLabel : confirmLabel}
               </Button>
-            </AlertDialogPrimitive.Cancel>
-            {/* Not `AlertDialog.Action`, which would close the dialog before the action finishes. */}
-            <Button variant={variant} disabled={isPending} onClick={onConfirm}>
-              {isPending && pendingLabel ? pendingLabel : confirmLabel}
-            </Button>
-          </div>
-        </AlertDialogPrimitive.Content>
+            </div>
+          </AlertDialogPrimitive.Content>
+        </div>
       </AlertDialogPrimitive.Portal>
     </AlertDialogPrimitive.Root>
   );

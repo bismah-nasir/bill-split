@@ -13,8 +13,9 @@ export const ERROR_CODES = [
   "INVITE_NO_MATCH",
   "INVITE_ALREADY_PENDING",
   "INVITE_ALREADY_PARTICIPANT",
+  "INVITE_PERSON_LINKED",
   "INVITE_SELF",
-  "TRIP_PARTICIPANT_LIMIT",
+  "TRIP_PEOPLE_LIMIT",
   "INVITATION_NOT_PENDING",
   // Sign-up / sign-in. Convex Auth throws plain errors, which production deployments
   // redact, so convex/auth.ts re-throws them with these codes.

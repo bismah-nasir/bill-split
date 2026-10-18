@@ -9,6 +9,14 @@ export const categoryValidator = v.union(
   v.literal("other"),
 );
 
+export const invitationStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("accepted"),
+  v.literal("declined"),
+  v.literal("cancelled"),
+  v.literal("unlinked"),
+);
+
 export default defineSchema({
   // Convex Auth's own tables (authAccounts holds the password hash, plus sessions,
   // refresh tokens and rate limits). App code never reads or writes them directly.
@@ -58,6 +66,25 @@ export default defineSchema({
     .index("by_trip", ["tripId", "position"])
     .index("by_trip_user", ["tripId", "userId"]) // the caller's own person on a trip
     .index("by_user", ["userId"]), // every trip a user can see (owner or linked)
+
+  // One record per (trip, invitee account), reused on re-invite. The identifier the owner typed
+  // is not stored (data minimisation).
+  tripInvitations: defineTable({
+    tripId: v.id("trips"),
+    personId: v.id("tripPeople"), // the person this account would be linked to
+    inviteeUserId: v.id("users"),
+    invitedByUserId: v.id("users"),
+    invitedVia: v.union(v.literal("username"), v.literal("email")),
+    status: invitationStatusValidator,
+    createdAt: v.number(), // reset on re-invite
+    respondedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("by_trip_invitee", ["tripId", "inviteeUserId"])
+    .index("by_person_status", ["personId", "status"])
+    .index("by_trip", ["tripId"])
+    .index("by_invitee_status", ["inviteeUserId", "status"])
+    .index("by_invitedBy_status", ["invitedByUserId", "status"]),
 
   items: defineTable({
     tripId: v.id("trips"),

@@ -36,6 +36,8 @@ function EditTripForm({ trip, onLeave }: { trip: TripDetail; onLeave: () => void
   const [confirmDiscard, setConfirmDiscard] = React.useState(false);
   // Prefilled once: live updates to the bill don't overwrite what's being edited.
   const [initialValue] = React.useState(() => tripToFormValue(trip));
+  // Live, so the removal warning is right even if someone accepts while the owner edits.
+  const linkedUsernames = linkedUsernamesOf(trip);
 
   function leave() {
     onLeave();
@@ -64,7 +66,13 @@ function EditTripForm({ trip, onLeave }: { trip: TripDetail; onLeave: () => void
           </Button>
         }
       />
-      <TripForm ref={formRef} mode="edit" initialValue={initialValue} onSubmit={handleSubmit} />
+      <TripForm
+        ref={formRef}
+        mode="edit"
+        initialValue={initialValue}
+        onSubmit={handleSubmit}
+        linkedUsernames={linkedUsernames}
+      />
       <ConfirmDialog
         open={confirmDiscard}
         onOpenChange={setConfirmDiscard}
@@ -79,5 +87,12 @@ function EditTripForm({ trip, onLeave }: { trip: TripDetail; onLeave: () => void
         }}
       />
     </div>
+  );
+}
+
+/** Saved people connected to an account, keyed like the form's people (by person ID). */
+function linkedUsernamesOf(trip: TripDetail): Record<string, string> {
+  return Object.fromEntries(
+    trip.people.flatMap((person) => (!person.isOwner && person.username ? [[person.personId, person.username]] : [])),
   );
 }
