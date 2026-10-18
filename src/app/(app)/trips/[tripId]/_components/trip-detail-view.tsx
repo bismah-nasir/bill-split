@@ -1,45 +1,111 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Pencil, Trash2 } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { useResetAfterLeave } from "@/components/layout/use-reset-after-leave";
 import { billViewFromDetail } from "@/components/trips/bill-view";
 import { CategoryBadge, OwnershipBadge, tripMetaLine } from "@/components/trips/trip-meta";
 import { TripSummary } from "@/components/trips/trip-summary";
+import { TripUnavailable } from "@/components/trips/trip-unavailable";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ErrorState } from "@/components/ui/error-state";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/loading-state";
-import { useTrip } from "@/lib/db/trips";
+import { useToast } from "@/components/ui/toast";
+import { useDeleteTrip, useTrip } from "@/lib/db/trips";
 
 export function TripDetailView({ tripId }: { tripId: string }) {
-  const trip = useTrip(tripId);
+  // After a delete, start fresh on the next visit (e.g. browser back shows "no access").
+  const { key, resetAfterLeave } = useResetAfterLeave();
+  return <TripDetail key={key} tripId={tripId} onDeleted={resetAfterLeave} />;
+}
 
-  if (trip === undefined) return <TripDetailSkeleton />;
-  if (trip === null) {
-    return (
-      <ErrorState
-        title="This bill doesn't exist or you don't have access."
-        description="Check the link, or ask the person who shared it."
-        action={
-          <Button asChild variant="secondary">
-            <Link href="/dashboard">Back to dashboard</Link>
-          </Button>
-        }
-      />
-    );
+function TripDetail({ tripId, onDeleted }: { tripId: string; onDeleted: () => void }) {
+  const trip = useTrip(tripId);
+  const router = useRouter();
+  const showToast = useToast();
+  const { remove, isDeleting } = useDeleteTrip();
+  const [isDeleted, setIsDeleted] = React.useState(false);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
+
+  // A dialog left open shouldn't greet the user on their next visit.
+  React.useLayoutEffect(() => () => setConfirmOpen(false), []);
+
+  async function deleteTrip() {
+    setDeleteError(null);
+    const result = await remove(tripId);
+    if (!result.ok) {
+      setDeleteError(result.error.message);
+      return;
+    }
+    setIsDeleted(true);
+    onDeleted();
+    showToast("Bill deleted");
+    router.push("/dashboard");
   }
+
+  // The bill disappears from the live query as soon as it's deleted; don't flash "no access"
+  // on the way to the dashboard.
+  if (trip === undefined || (trip === null && (isDeleting || isDeleted))) return <TripDetailSkeleton />;
+  if (trip === null) return <TripUnavailable />;
+
+  const isOwner = trip.viewerRole === "owner";
 
   return (
     <div className="flex flex-col gap-24">
       <div className="flex flex-col gap-12">
-        <PageHeader title={trip.title} description={tripMetaLine(trip.storeName, trip.tripDate)} />
+        <PageHeader
+          title={trip.title}
+          description={tripMetaLine(trip.storeName, trip.tripDate)}
+          actions={
+            isOwner && (
+              <>
+                <Button asChild variant="secondary">
+                  <Link href={`/trips/${trip.id}/edit`}>
+                    <Pencil aria-hidden className="size-icon-md" />
+                    Edit
+                  </Link>
+                </Button>
+                <Button
+                  variant="danger-soft"
+                  onClick={() => {
+                    setDeleteError(null);
+                    setConfirmOpen(true);
+                  }}
+                >
+                  <Trash2 aria-hidden className="size-icon-md" />
+                  Delete
+                </Button>
+              </>
+            )
+          }
+        />
         <div className="flex flex-wrap items-center gap-8">
           <CategoryBadge category={trip.category} />
-          <OwnershipBadge isOwner={trip.viewerRole === "owner"} />
+          <OwnershipBadge isOwner={isOwner} />
         </div>
       </div>
       <TripSummary bill={billViewFromDetail(trip)} />
+
+      {isOwner && (
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title="Delete this bill?"
+          description="This permanently removes it and its price records for everyone it's shared with."
+          confirmLabel="Delete bill"
+          pendingLabel="Deleting…"
+          variant="danger"
+          isPending={isDeleting}
+          error={deleteError}
+          onConfirm={() => void deleteTrip()}
+        />
+      )}
     </div>
   );
 }

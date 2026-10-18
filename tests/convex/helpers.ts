@@ -93,3 +93,8 @@ export async function createTrip(as: UserAccessor, overrides: TripOverrides = {}
   const { tripId } = await as.mutation(api.trips.create, tripInput(overrides));
   return tripId;
 }
+
+/** Saves `tripInput(overrides)` over an existing trip as the given user. */
+export async function updateTrip(as: UserAccessor, tripId: string, overrides: TripOverrides = {}) {
+  return await as.mutation(api.trips.update, { tripId, ...tripInput(overrides) });
+}

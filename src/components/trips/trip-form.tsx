@@ -20,6 +20,7 @@ import { TripSummary } from "./trip-summary";
 import {
   fieldId,
   initTripFormState,
+  isFormDirty,
   toFormValue,
   tripFormReducer,
   validateForm,
@@ -28,19 +29,28 @@ import {
   type TripFormValue,
 } from "./trip-form-state";
 
+/** Lets the page ask about the form, e.g. before discarding it on **Cancel**. */
+export type TripFormHandle = { isDirty: () => boolean };
+
 type TripFormProps = {
   mode: "create" | "edit";
   initialValue: TripFormValue;
   /** Saves the bill. Resolves to `null` on success, or to the error to show. */
   onSubmit: (value: TripFormValue) => Promise<AppError | null>;
+  ref?: React.Ref<TripFormHandle>;
 };
 
 const SAVE_FAILED_MESSAGE = "Couldn't save your bill. Your changes are still here. Try again.";
 
 /** Create or edit a bill: details and items, then a review of the split before saving. */
-export function TripForm({ mode, initialValue, onSubmit }: TripFormProps) {
+export function TripForm({ mode, initialValue, onSubmit, ref }: TripFormProps) {
   const [state, dispatch] = React.useReducer(tripFormReducer, initialValue, initTripFormState);
   const [isSaving, setIsSaving] = React.useState(false);
+
+  React.useImperativeHandle(ref, () => ({ isDirty: () => isFormDirty(state, initialValue) }), [
+    state,
+    initialValue,
+  ]);
 
   // Focus the field the reducer asked for (the first error, or a new row's name).
   React.useEffect(() => {

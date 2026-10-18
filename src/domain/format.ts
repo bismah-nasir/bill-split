@@ -64,3 +64,13 @@ export function formatQuantity(quantityMilli: number, unit?: string | null): str
   const quantity = milliToInput(quantityMilli);
   return unit ? `${quantity} ${unit}` : quantity;
 }
+
+/** 123456 -> "1234.56", 12550 -> "125.50", 50000 -> "500". For edit forms: no grouping commas. */
+export function paisaToInput(paisa: number): string {
+  if (!Number.isSafeInteger(paisa) || paisa < 0) {
+    throw new Error(`paisaToInput expects a non-negative integer number of paisa, got ${paisa}`);
+  }
+  const rupees = Math.trunc(paisa / 100);
+  const fraction = paisa % 100;
+  return fraction === 0 ? String(rupees) : `${rupees}.${String(fraction).padStart(2, "0")}`;
+}

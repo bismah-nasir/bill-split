@@ -34,6 +34,32 @@ export function useCreateTrip() {
   return { create, isSaving: isPending, error };
 }
 
+/** Saves an edited bill (owner only). */
+export function useUpdateTrip() {
+  const { run, isPending, error } = useAppMutation(api.trips.update);
+  const update = useCallback(
+    async (tripId: string, input: TripInput): Promise<{ ok: true } | { ok: false; error: AppError }> => {
+      const result = await run({ tripId, ...toTripArgs(input) });
+      return result.ok ? { ok: true } : result;
+    },
+    [run],
+  );
+  return { update, isSaving: isPending, error };
+}
+
+/** Permanently deletes a bill (owner only). */
+export function useDeleteTrip() {
+  const { run, isPending, error } = useAppMutation(api.trips.remove);
+  const remove = useCallback(
+    async (tripId: string): Promise<{ ok: true } | { ok: false; error: AppError }> => {
+      const result = await run({ tripId });
+      return result.ok ? { ok: true } : result;
+    },
+    [run],
+  );
+  return { remove, isDeleting: isPending, error };
+}
+
 /** Exactly the fields the backend accepts: Convex rejects unknown keys such as UI row keys. */
 function toTripArgs({ details, people, items }: TripInput) {
   return {

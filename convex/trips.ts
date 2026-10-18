@@ -2,10 +2,10 @@ import { v } from "convex/values";
 
 import { mutation, query } from "./_generated/server";
 import { ACCESSIBLE_TRIPS_CAP, listAccessibleTrips, RECENT_TRIPS_LIMIT } from "./lib/access";
-import { findTripAccess, getCurrentUser, requireOnboardedUser } from "./lib/auth";
+import { findTripAccess, getCurrentUser, requireOnboardedUser, requireTripOwner } from "./lib/auth";
 import { appError } from "./lib/errors";
 import { toTripCard, toTripDetail } from "./lib/readModels";
-import { validateOrThrow, writeNewTrip } from "./lib/tripWrite";
+import { deleteTrip, validateOrThrow, writeNewTrip, writeTripUpdate } from "./lib/tripWrite";
 import { categoryValidator } from "./schema";
 
 // Quantities and prices arrive as the strings the user typed; the server parses them with the
@@ -76,5 +76,34 @@ export const listRecent = query({
     return await Promise.all(
       trips.slice(0, RECENT_TRIPS_LIMIT).map((trip) => toTripCard(ctx, trip, user._id)),
     );
+  },
+});
+
+/**
+ * Saves an edited bill. Owner only: anyone else gets `NOT_FOUND` (or `FORBIDDEN` if they can
+ * see the bill). Saved people and items must belong to this bill.
+ */
+export const update = mutation({
+  args: {
+    tripId: v.string(),
+    details: detailsValidator,
+    people: v.array(personInputValidator),
+    items: v.array(itemInputValidator),
+  },
+  handler: async (ctx, args) => {
+    const { trip } = await requireTripOwner(ctx, args.tripId);
+    const validated = validateOrThrow(args);
+    await writeTripUpdate(ctx, trip, validated);
+    return null;
+  },
+});
+
+/** Permanently deletes a bill with its people, items and assignments. Owner only. */
+export const remove = mutation({
+  args: { tripId: v.string() },
+  handler: async (ctx, args) => {
+    const { trip } = await requireTripOwner(ctx, args.tripId);
+    await deleteTrip(ctx, trip._id);
+    return null;
   },
 });

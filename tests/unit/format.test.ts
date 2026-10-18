@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { formatPaisa, formatQuantity, formatTripDate, milliToInput, todayIsoDate } from "../../src/domain/format";
+import {
+  formatPaisa,
+  formatQuantity,
+  formatTripDate,
+  milliToInput,
+  paisaToInput,
+  todayIsoDate,
+} from "../../src/domain/format";
+import { parseRupeesToPaisa } from "../../src/domain/money";
 
 describe("formatPaisa", () => {
   it.each([
@@ -64,5 +72,29 @@ describe("milliToInput / formatQuantity", () => {
     expect(formatQuantity(1500, "kg")).toBe("1.5 kg");
     expect(formatQuantity(2000)).toBe("2");
     expect(formatQuantity(2000, null)).toBe("2");
+  });
+});
+
+describe("paisaToInput", () => {
+  it.each([
+    [123456, "1234.56"],
+    [12550, "125.50"],
+    [50000, "500"],
+    [5, "0.05"],
+    [0, "0"],
+    [1_000_000_000, "10000000"],
+  ])("%i -> %j", (paisa, text) => {
+    expect(paisaToInput(paisa)).toBe(text);
+  });
+
+  it("round-trips through parseRupeesToPaisa", () => {
+    for (const paisa of [0, 1, 99, 100, 33333, 125050, 1_000_000_000]) {
+      expect(parseRupeesToPaisa(paisaToInput(paisa))).toEqual({ ok: true, value: paisa });
+    }
+  });
+
+  it("rejects fractional or negative paisa", () => {
+    expect(() => paisaToInput(1.5)).toThrow();
+    expect(() => paisaToInput(-100)).toThrow();
   });
 });

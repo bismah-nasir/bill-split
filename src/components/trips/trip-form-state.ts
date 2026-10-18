@@ -7,7 +7,7 @@
  * use indexes (`items.2.unitPrice`), are translated with `byRowKey`.
  */
 import { DEFAULT_CATEGORY } from "@/domain/categories";
-import { todayIsoDate } from "@/domain/format";
+import { milliToInput, paisaToInput, todayIsoDate } from "@/domain/format";
 import {
   OWNER_KEY,
   validateTripInput,
@@ -16,6 +16,7 @@ import {
   type TripDetailsInput,
   type TripValidationResult,
 } from "@/domain/trip-validation";
+import type { TripDetail } from "@/domain/types";
 
 export type TripFormValue = { details: TripDetailsInput; people: PersonInput[]; items: ItemInput[] };
 
@@ -189,4 +190,41 @@ function withError(state: TripFormState, path: string, message: string | undefin
 
 function focusOn(state: TripFormState, path: string): TripFormState["focus"] {
   return { path, request: (state.focus?.request ?? 0) + 1 };
+}
+
+/**
+ * A saved bill as form input, for editing. Saved people and items keep their IDs (a saved
+ * person's key is its ID), so the server updates them instead of creating new ones.
+ */
+export function tripToFormValue(trip: TripDetail): TripFormValue {
+  const keyOf = new Map(
+    trip.people.map((person) => [person.personId, person.isOwner ? OWNER_KEY : person.personId]),
+  );
+  return {
+    details: {
+      title: trip.title,
+      storeName: trip.storeName ?? "",
+      tripDate: trip.tripDate,
+      category: trip.category,
+    },
+    people: trip.people
+      .filter((person) => !person.isOwner)
+      .map((person) => ({ key: person.personId, personId: person.personId, name: person.name ?? "" })),
+    items: trip.items.map((item) => ({
+      itemId: item.id,
+      name: item.name,
+      brand: item.brand ?? "",
+      variant: item.variant ?? "",
+      packSize: item.packSize ?? "",
+      unit: item.unit ?? "",
+      quantity: milliToInput(item.quantityMilli),
+      unitPrice: paisaToInput(item.unitPricePaisa),
+      assigneeKeys: item.assignees.flatMap((assignee) => keyOf.get(assignee.personId) ?? []),
+    })),
+  };
+}
+
+/** Whether the form differs from the value it started with (e.g. to confirm discarding). */
+export function isFormDirty(state: TripFormState, initialValue: TripFormValue): boolean {
+  return JSON.stringify(toFormValue(state)) !== JSON.stringify(initialValue);
 }

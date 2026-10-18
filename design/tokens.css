@@ -270,6 +270,31 @@
       opacity: 0.5;
     }
   }
+
+  /* Enter animations; always used with `motion-safe:` */
+  --animate-fade-in: fade-in var(--duration-base) var(--ease-standard);
+  --animate-dialog-in: dialog-in var(--duration-base) var(--ease-standard);
+  --animate-toast-in: toast-in var(--duration-base) var(--ease-standard);
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes dialog-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(var(--spacing-16));
+    }
+  }
 }
 
 /* ─── Typography utilities ─────────────────────────────────────────── */
