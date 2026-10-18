@@ -1,3 +1,4 @@
+import { HISTORY_PAGE_SIZE, MAX_HISTORY_LIMIT } from "../../src/domain/bill-history";
 import { MAX_ITEMS_PER_TRIP, MAX_PEOPLE_PER_TRIP } from "../../src/domain/trip-validation";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
@@ -6,8 +7,7 @@ import type { QueryCtx } from "../_generated/server";
 export const ACCESSIBLE_TRIPS_CAP = 1000;
 export const PRODUCT_SEARCH_TRIPS_CAP = 300;
 export const RECENT_TRIPS_LIMIT = 5;
-export const HISTORY_PAGE_SIZE = 20;
-export { MAX_ITEMS_PER_TRIP, MAX_PEOPLE_PER_TRIP };
+export { HISTORY_PAGE_SIZE, MAX_HISTORY_LIMIT, MAX_ITEMS_PER_TRIP, MAX_PEOPLE_PER_TRIP };
 /** Every assignment of one trip: each item is split between at most every person. */
 export const MAX_ASSIGNMENTS_PER_TRIP = MAX_ITEMS_PER_TRIP * MAX_PEOPLE_PER_TRIP;
 

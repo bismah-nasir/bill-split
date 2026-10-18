@@ -6,10 +6,9 @@ import { Plus, ReceiptText } from "lucide-react";
 
 import { useAccount } from "@/components/layout/account-gate";
 import { PageHeader } from "@/components/layout/page-header";
-import { TripCard } from "@/components/trips/trip-card";
+import { TripCardList, TripCardListSkeleton } from "@/components/trips/trip-card-list";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Skeleton } from "@/components/ui/loading-state";
 import { useRecentTrips } from "@/lib/db/trips";
 
 export function DashboardView() {
@@ -39,15 +38,18 @@ function RecentBills() {
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-12">
-      <h2 id={headingId} className="type-h3">
-        Recent bills
-      </h2>
+      <div className="flex items-center justify-between gap-12">
+        <h2 id={headingId} className="type-h3">
+          Recent bills
+        </h2>
+        {trips !== undefined && trips.length > 0 && (
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/trips">View all bills</Link>
+          </Button>
+        )}
+      </div>
       {trips === undefined ? (
-        <div role="status" className="flex flex-col gap-12">
-          <span className="sr-only">Loading bills…</span>
-          <Skeleton className="h-bubble w-full rounded-lg" />
-          <Skeleton className="h-bubble w-full rounded-lg" />
-        </div>
+        <TripCardListSkeleton />
       ) : trips.length === 0 ? (
         <EmptyState
           icon={ReceiptText}
@@ -60,13 +62,7 @@ function RecentBills() {
           }
         />
       ) : (
-        <ul className="flex flex-col gap-12">
-          {trips.map((trip) => (
-            <li key={trip.id}>
-              <TripCard trip={trip} />
-            </li>
-          ))}
-        </ul>
+        <TripCardList trips={trips} />
       )}
     </section>
   );

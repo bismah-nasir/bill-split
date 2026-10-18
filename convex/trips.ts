@@ -1,7 +1,22 @@
 import { v } from "convex/values";
 
+import {
+  matchesHistoryQuery,
+  MAX_HISTORY_SEARCH_LENGTH,
+  orderDateRange,
+  sortHistory,
+} from "../src/domain/bill-history";
+import type { FieldErrors } from "../src/domain/errors";
+import { isIsoDate } from "../src/domain/trip-validation";
+import type { BillHistoryPage } from "../src/domain/types";
 import { mutation, query } from "./_generated/server";
-import { ACCESSIBLE_TRIPS_CAP, listAccessibleTrips, RECENT_TRIPS_LIMIT } from "./lib/access";
+import {
+  ACCESSIBLE_TRIPS_CAP,
+  HISTORY_PAGE_SIZE,
+  listAccessibleTrips,
+  MAX_HISTORY_LIMIT,
+  RECENT_TRIPS_LIMIT,
+} from "./lib/access";
 import { findTripAccess, getCurrentUser, requireOnboardedUser, requireTripOwner } from "./lib/auth";
 import { appError } from "./lib/errors";
 import { toTripCard, toTripDetail } from "./lib/readModels";
@@ -76,6 +91,77 @@ export const listRecent = query({
     return await Promise.all(
       trips.slice(0, RECENT_TRIPS_LIMIT).map((trip) => toTripCard(ctx, trip, user._id)),
     );
+  },
+});
+
+/**
+ * Bill History: every bill the caller owns or is linked on, filtered, sorted and cut to
+ * `limit` (1–200, default 20). The search is a case-insensitive substring of the title, store
+ * and item names; `from` / `to` are inclusive `YYYY-MM-DD` dates, and a range given backwards
+ * is swapped rather than rejected. "Shared" means bills the caller is linked on but doesn't own.
+ */
+export const listHistory = query({
+  args: {
+    search: v.optional(v.string()),
+    category: v.optional(categoryValidator),
+    from: v.optional(v.string()),
+    to: v.optional(v.string()),
+    ownership: v.union(v.literal("all"), v.literal("owned"), v.literal("shared")),
+    sort: v.union(
+      v.literal("date_desc"),
+      v.literal("date_asc"),
+      v.literal("total_desc"),
+      v.literal("total_asc"),
+    ),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args): Promise<BillHistoryPage> => {
+    const limit = args.limit ?? HISTORY_PAGE_SIZE;
+    const fieldErrors: FieldErrors = {};
+    if (!Number.isInteger(limit) || limit < 1 || limit > MAX_HISTORY_LIMIT) {
+      fieldErrors.limit = `Limit must be a whole number from 1 to ${MAX_HISTORY_LIMIT}`;
+    }
+    if ((args.search ?? "").length > MAX_HISTORY_SEARCH_LENGTH) {
+      fieldErrors.search = `Search must be ${MAX_HISTORY_SEARCH_LENGTH} characters or fewer`;
+    }
+    if (args.from !== undefined && !isIsoDate(args.from)) fieldErrors.from = "Enter a valid date";
+    if (args.to !== undefined && !isIsoDate(args.to)) fieldErrors.to = "Enter a valid date";
+    if (Object.keys(fieldErrors).length > 0) {
+      throw appError("VALIDATION", "Some filters need attention.", fieldErrors);
+    }
+
+    const user = await getCurrentUser(ctx);
+    if (user === null) return { trips: [], hasMore: false, totalMatches: 0, totalAccessible: 0 };
+
+    const accessible = await listAccessibleTrips(ctx, user._id, ACCESSIBLE_TRIPS_CAP);
+    const query = {
+      search: args.search ?? "",
+      category: args.category ?? null,
+      ...orderDateRange(args.from ?? "", args.to ?? ""),
+      ownership: args.ownership,
+      sort: args.sort,
+    };
+    const candidates = accessible.map((trip) => ({
+      trip,
+      searchText: trip.searchText,
+      category: trip.category,
+      tripDate: trip.tripDate,
+      totalPaisa: trip.totalPaisa,
+      isOwner: trip.ownerId === user._id,
+    }));
+    const matches = sortHistory(
+      candidates.filter((candidate) => matchesHistoryQuery(candidate, query)),
+      query.sort,
+    );
+    const trips = await Promise.all(
+      matches.slice(0, limit).map(({ trip }) => toTripCard(ctx, trip, user._id)),
+    );
+    return {
+      trips,
+      hasMore: matches.length > limit,
+      totalMatches: matches.length,
+      totalAccessible: accessible.length,
+    };
   },
 });
 

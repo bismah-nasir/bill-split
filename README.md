@@ -84,6 +84,8 @@ Every read is bounded. The caps live in `convex/lib/access.ts` (item and people 
 | `PRODUCT_SEARCH_TRIPS_CAP` | 300 | Bills searched for products and item suggestions |
 | `RECENT_TRIPS_LIMIT` | 5 | Dashboard "Recent bills" |
 | `HISTORY_PAGE_SIZE` | 20 | Bill History "Load more" step |
+| `MAX_HISTORY_LIMIT` | 200 | Bills Bill History shows at most for one search (narrow the filters to find others); in `src/domain/bill-history.ts` |
+| `MAX_HISTORY_SEARCH_LENGTH` | 80 | Characters in a Bill History search; in `src/domain/bill-history.ts` |
 | `MAX_ITEMS_PER_TRIP` | 200 | Items on one bill |
 | `MAX_PEOPLE_PER_TRIP` | 20 | People on one bill, including the owner |
 | `INVITATION_LIST_LIMIT` | 50 | Invitations shown on Invitations → Received and Sent (the nav badge shows "50+"); in `convex/invitations.ts` |

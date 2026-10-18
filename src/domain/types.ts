@@ -26,6 +26,18 @@ export type TripCard = {
   isOwner: boolean;
 };
 
+/** One page of Bill History. */
+export type BillHistoryPage = {
+  /** The first `limit` matching bills, in the chosen order. */
+  trips: TripCard[];
+  /** More bills match than were returned. */
+  hasMore: boolean;
+  /** How many bills match the filters. */
+  totalMatches: number;
+  /** How many bills the user can see at all, so the page can tell "no bills yet" from "no matches". */
+  totalAccessible: number;
+};
+
 /** Someone a bill is split between. Never carries an account's name or email. */
 export type BillPerson = {
   personId: string;

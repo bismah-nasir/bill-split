@@ -1,10 +1,11 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
+import type { HistoryFilters } from "@/domain/bill-history";
 import type { ItemInput, PersonInput, TripDetailsInput } from "@/domain/trip-validation";
-import type { TripCard, TripDetail } from "@/domain/types";
+import type { BillHistoryPage, TripCard, TripDetail } from "@/domain/types";
 
 import { api } from "../../../convex/_generated/api";
 import type { AppError } from "./errors";
@@ -15,6 +16,30 @@ export type TripInput = { details: TripDetailsInput; people: PersonInput[]; item
 /** The 5 most recent bills the user owns or shares; `undefined` while loading. */
 export function useRecentTrips(): TripCard[] | undefined {
   return useQuery(api.trips.listRecent);
+}
+
+/**
+ * One page of Bill History: the first `limit` bills matching `filters`.
+ *
+ * While new filters or a bigger `limit` load, the previous page stays on screen (`isUpdating`
+ * is true) instead of flashing back to a skeleton; `page` is `undefined` only on first load.
+ */
+export function useBillHistory(
+  filters: HistoryFilters,
+  limit: number,
+): { page: BillHistoryPage | undefined; isUpdating: boolean } {
+  const current = useQuery(api.trips.listHistory, {
+    ownership: filters.ownership,
+    sort: filters.sort,
+    limit,
+    ...(filters.search.trim() ? { search: filters.search.trim() } : {}),
+    ...(filters.category ? { category: filters.category } : {}),
+    ...(filters.from ? { from: filters.from } : {}),
+    ...(filters.to ? { to: filters.to } : {}),
+  });
+  const [previous, setPrevious] = useState<BillHistoryPage | undefined>(current);
+  if (current !== undefined && current !== previous) setPrevious(current);
+  return { page: current ?? previous, isUpdating: current === undefined && previous !== undefined };
 }
 
 /** `undefined` while loading, `null` when the bill doesn't exist or the user can't see it. */

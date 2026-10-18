@@ -223,15 +223,18 @@ function optionalText(input: string): string | undefined {
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-function tripDateError(tripDate: string, today: string): string | null {
-  if (tripDate.length === 0) return "Enter a date";
-  const match = DATE_PATTERN.exec(tripDate);
-  if (!match) return "Enter a valid date";
+/** Whether the text is a real calendar date written `YYYY-MM-DD`. */
+export function isIsoDate(input: string): boolean {
+  const match = DATE_PATTERN.exec(input);
+  if (!match) return false;
   const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
   const date = new Date(Date.UTC(year, month - 1, day));
-  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
-    return "Enter a valid date";
-  }
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+function tripDateError(tripDate: string, today: string): string | null {
+  if (tripDate.length === 0) return "Enter a date";
+  if (!isIsoDate(tripDate)) return "Enter a valid date";
   if (tripDate > oneYearAfter(today)) return "The date can't be more than a year from now";
   return null;
 }

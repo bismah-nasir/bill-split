@@ -13,6 +13,8 @@ type SegmentedControlProps<T extends string> = {
   options: readonly SegmentedOption<T>[];
   value: T;
   onValueChange: (value: T) => void;
+  /** Stretch across the container, sharing the width equally (for long labels on phones). */
+  fullWidth?: boolean;
   className?: string;
 };
 
@@ -25,6 +27,7 @@ export function SegmentedControl<T extends string>({
   options,
   value,
   onValueChange,
+  fullWidth = false,
   className,
 }: SegmentedControlProps<T>) {
   return (
@@ -34,13 +37,20 @@ export function SegmentedControl<T extends string>({
       value={value}
       // Radix reports a plain string; it's always one of `options`.
       onValueChange={(next) => onValueChange(next as T)}
-      className={cn("inline-flex w-fit gap-4 rounded-pill bg-surface-muted p-4", className)}
+      className={cn(
+        "gap-4 rounded-pill bg-surface-muted p-4",
+        fullWidth ? "flex w-full" : "inline-flex w-fit",
+        className,
+      )}
     >
       {options.map((option) => (
         <RadioGroupPrimitive.Item
           key={option.value}
           value={option.value}
-          className="h-control-sm min-w-0 rounded-pill px-16 type-button-sm text-ink-secondary transition-colors duration-fast ease-standard hover:text-ink data-[state=checked]:bg-surface data-[state=checked]:text-primary data-[state=checked]:shadow-subtle"
+          className={cn(
+            "h-control-sm min-w-0 rounded-pill type-button-sm text-ink-secondary transition-colors duration-fast ease-standard hover:text-ink data-[state=checked]:bg-surface data-[state=checked]:text-primary data-[state=checked]:shadow-subtle",
+            fullWidth ? "flex-1 px-8" : "px-16",
+          )}
         >
           {option.label}
         </RadioGroupPrimitive.Item>
