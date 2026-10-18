@@ -43,3 +43,53 @@ export async function errorDataOf(fn: () => Promise<unknown>): Promise<unknown> 
   }
   throw new Error("Expected the call to throw a ConvexError");
 }
+
+type UserAccessor = Awaited<ReturnType<typeof createUser>>["as"];
+
+export type TripOverrides = {
+  details?: Partial<{ title: string; storeName: string; tripDate: string; category: "grocery" | "restaurant" | "shopping" | "other" }>;
+  people?: { key: string; personId?: string; name: string }[];
+  items?: Partial<{
+    itemId: string;
+    name: string;
+    brand: string;
+    variant: string;
+    packSize: string;
+    unit: string;
+    quantity: string;
+    unitPrice: string;
+    assigneeKeys: string[];
+  }>[];
+};
+
+/** Valid input for `trips.create`: no named people, every item paid by the owner. */
+export function tripInput(overrides: TripOverrides = {}) {
+  const items = overrides.items ?? [{}];
+  return {
+    details: {
+      title: "Imtiaz Grocery",
+      storeName: "Imtiaz",
+      tripDate: "2026-10-16",
+      category: "grocery" as const,
+      ...overrides.details,
+    },
+    people: overrides.people ?? [],
+    items: items.map((item) => ({
+      name: "Cooking Oil",
+      brand: "",
+      variant: "",
+      packSize: "",
+      unit: "",
+      quantity: "1",
+      unitPrice: "500",
+      assigneeKeys: ["owner"],
+      ...item,
+    })),
+  };
+}
+
+/** Creates a trip as the given user and returns its ID. */
+export async function createTrip(as: UserAccessor, overrides: TripOverrides = {}) {
+  const { tripId } = await as.mutation(api.trips.create, tripInput(overrides));
+  return tripId;
+}

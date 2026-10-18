@@ -36,7 +36,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-surface shadow-raised md:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 flex h-tab-bar border-t border-line bg-surface shadow-raised md:hidden"
       >
         {NAV_ITEMS.map((item) => (
           <NavLink key={item.href} item={item} variant="tab" />

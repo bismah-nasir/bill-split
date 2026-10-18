@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { formatPaisa, formatTripDate, todayIsoDate } from "../../src/domain/format";
+import { formatPaisa, formatQuantity, formatTripDate, milliToInput, todayIsoDate } from "../../src/domain/format";
 
 describe("formatPaisa", () => {
   it.each([
@@ -46,5 +46,23 @@ describe("formatTripDate", () => {
   it("returns invalid input unchanged", () => {
     expect(formatTripDate("2026-02-30")).toBe("2026-02-30");
     expect(formatTripDate("not a date")).toBe("not a date");
+  });
+});
+
+describe("milliToInput / formatQuantity", () => {
+  it.each([
+    [1000, "1"],
+    [1500, "1.5"],
+    [1250, "1.25"],
+    [1, "0.001"],
+    [100_000_000, "100000"],
+  ])("%i -> %j", (milli, text) => {
+    expect(milliToInput(milli)).toBe(text);
+  });
+
+  it("adds the unit when there is one", () => {
+    expect(formatQuantity(1500, "kg")).toBe("1.5 kg");
+    expect(formatQuantity(2000)).toBe("2");
+    expect(formatQuantity(2000, null)).toBe("2");
   });
 });

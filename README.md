@@ -69,3 +69,20 @@ Email and password through Convex Auth's Password provider, configured in `conve
 ## Styling rules (enforced by ESLint)
 
 `design/tokens.css` resets Tailwind's default theme (`--*: initial`), so default classes like `bg-white` or `p-3` produce nothing. Use token classes only (`bg-primary`, `p-16`, `type-body`, `rounded-md`, …). Inline `style`, hex/rgb colours and arbitrary values like `p-[13px]` fail lint.
+
+## Money
+
+All amounts are integer **paisa** (Rs. 1 = 100 paisa) and quantities are integer thousandths, so there is no floating-point money anywhere. Line totals round half-up to the nearest paisa. Shared items split equally; leftover paisa go to the people earliest on the bill (the owner first), so the shares always add up to the bill total exactly. The rules live in `src/domain/money.ts` and are used by both the form preview and the server, which re-parses and recomputes everything it saves.
+
+## Known MVP limits
+
+Every read is bounded. The caps live in `convex/lib/access.ts` (item and people limits in `src/domain/trip-validation.ts`):
+
+| Limit | Value | Applies to |
+|---|---|---|
+| `ACCESSIBLE_TRIPS_CAP` | 1000 | Bills considered for the dashboard, history, price history and summaries |
+| `PRODUCT_SEARCH_TRIPS_CAP` | 300 | Bills searched for products and item suggestions |
+| `RECENT_TRIPS_LIMIT` | 5 | Dashboard "Recent bills" |
+| `HISTORY_PAGE_SIZE` | 20 | Bill History "Load more" step |
+| `MAX_ITEMS_PER_TRIP` | 200 | Items on one bill |
+| `MAX_PEOPLE_PER_TRIP` | 20 | People on one bill, including the owner |

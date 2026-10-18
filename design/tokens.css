@@ -118,6 +118,8 @@
 
   --spacing-bubble: 3.5rem;
 
+  --spacing-tab-bar: 3.25rem;      /* 52px — mobile bottom nav; sticky footers sit above it */
+
   --spacing-avatar-xl: 5.5rem;
 
   --spacing-icon-xs: 0.75rem;

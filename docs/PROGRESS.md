@@ -94,5 +94,52 @@ Brand moved from indigo to Deep Teal (`primary` #0f766e, pressed #115e59, soft #
 
 Dev data added: `carol-4962@example.com`, `carol-9569@example.com`, `carol-9473@example.com` (password `testpass123`).
 
-## Next: Phase 3 — Create and view a private bill; dashboard recent bills
-No human steps needed. Reuse `Badge` for the category and Owned/Shared badges, and add `export const instant = false` to each new `(app)` page.
+## Change (2026-10-17): people on a bill don't need accounts
+By user decision, splitting no longer depends on invitations. `docs/BUILD_PLAN.md` was rewritten accordingly (§1–§5, §8–§13, Phases 3–11, §16):
+- **People on a bill** (`tripPeople`): the owner, plus anyone the owner adds by typing a name (1–40 chars, unique per bill ignoring case, max 20 people including the owner). Items are assigned to people, not accounts (`itemAssignments.personId`).
+- **Invitations** (`tripInvitations`) now only *link* one person on the bill to one account. Accept links the person and grants read-only access; decline, cancel and unlink leave the person on the bill as a plain name. **The split never changes** in any of these.
+- **No automatic matching:** a typed name ("Ben") is never matched to an account, even if someone signs up with the same name. Only the owner links a person, by inviting a specific username/email for that person, and the account holder must accept. The bill keeps the owner's typed name plus the username: "Ben (@ben_doe)". The account's own name is never shown.
+- **Remainder paisa** go by each person's fixed position on the bill (owner 0, then in the order added), not by user ID, so linking/renaming never moves a paisa and the form preview matches the server.
+- Removing a person is an edit of the bill (their solo items move to the owner, shared items drop them); unlinking keeps the person and their share.
+- Bill details open with a **split summary** card sized for one 360 px phone screenshot, for sharing in any chat app. There's no share link or image generation.
+- **Phase order changed:** Phase 5 is now "People and splitting" (no accounts needed), Phase 6 is "Linking people to accounts and shared read access". Phase 3 already uses the people-based data model (owner row only, "Paid by you").
+
+## Phase 3 — Create and view a private bill; dashboard recent bills ✅ (2026-10-17)
+
+**Done**
+- Schema: `trips`, `tripPeople`, `items`, `itemAssignments` (§9) and the exported `categoryValidator`. Pushed to the dev deployment.
+- `convex/lib/auth.ts`: `getTripAccess`, `findTripAccess` (string ID → `normalizeId` → access, never throws), `requireTripViewer`, `requireTripOwner` (`NOT_FOUND` for missing or inaccessible, `FORBIDDEN` for participants).
+- `convex/lib/access.ts`: the bounded-read constants (plus `MAX_ASSIGNMENTS_PER_TRIP`) and `listAccessibleTrips`. `convex/lib/tripWrite.ts`: `validateOrThrow`, `buildItemDoc`, `writeNewTrip`. `convex/lib/readModels.ts`: `toTripCard`, `toTripDetail`.
+- `convex/trips.ts`: `create`, `get`, `listRecent`.
+- Domain: `money.ts` (complete), `trip-validation.ts` (complete, incl. people rules), `categories.ts`, `people.ts` (`personLabel`), `normalization.ts` (`normalizeUnit`, `normalizePackSize`, `buildProductMatchKey`, `buildTripSearchText`), `format.ts` (`milliToInput`, `formatQuantity`), `types.ts` (`TripCard`, `BillPerson`, `TripDetail`).
+- `src/lib/db/`: `trips.ts` (`useRecentTrips`, `useTrip`, `useCreateTrip`); the mutation helper moved to `use-app-mutation.ts` and now resolves to `{ ok, value } | { ok, error }` (users hooks adapted).
+- UI: `ui/field.tsx` (label + hint + status wiring, now shared by `TextField` and `Select`), `ui/select.tsx` (Radix), `ui/money-text.tsx` (`sm | body | h3 | numeric`), `ui/alert.tsx` (`error | warning | success | info`, optional `action`), `TextField` `prefix` ("Rs."). `components/trips/`: `trip-form`, `trip-form-state` (reducer), `item-editor`, `item-row`, `trip-summary`, `participant-shares`, `trip-card`, `trip-meta` (meta line, category and ownership badges), `bill-view` (one view model for review and the saved bill).
+- Routes: `(app)/trips/new` (Details → Items → sticky footer "N items · Total" + **Review** → review screen with **Back to edit** / **Save bill**), `(app)/trips/[tripId]` (header, category + Owned badge, items, total, shares, reconciliation badge; skeleton; no-access state), dashboard (**New bill**, "Recent bills" cards, empty state with **Create your first bill**). Each new page has `export const instant = false`.
+- Token: `--spacing-tab-bar` (3.25rem). The mobile tab bar now has that fixed height, and sticky footers use `bottom-tab-bar` (`md:bottom-16`).
+- README: money rules and the MVP limits table.
+- Tests (200 passing): `tests/unit/money.test.ts` (parsing, half-up rounding, `allocateEqually`, `computeBill` scenarios, 500 seeded random bills reconcile), `tests/unit/trip-validation.test.ts`, more `normalization` and `format` tests, `tests/convex/trips.test.ts` (stored totals, line totals, owner row, allocations, `productMatchKey`, `searchText`, server re-parsing `" 1,000.5 "`, `VALIDATION` field errors, foreign assignee keys/person IDs, no account name/email in responses, recent ordering), `tests/convex/permissions.test.ts` (owner / unrelated / signed out / malformed and foreign-table IDs / deleted bill; `listRecent` isolation). `tests/convex/helpers.ts`: `tripInput`, `createTrip`.
+- Verified: `npm run check` (typecheck, lint, tests) and `next build` pass. No browser testing this phase, by user instruction.
+
+**Decisions / deviations**
+- **Offline saves fail fast.** Convex queues mutations while disconnected and sends them on reconnect, so pressing Save offline would hang on "Saving…" (and a retry could later save twice). `useAppMutation` now checks `navigator.onLine` and the Convex socket first and, if either is down, returns a new client-only error code `OFFLINE` without sending. The bill form shows "Couldn't save your bill. Your changes are still here. Try again." with **Try again**. A mutation already sent before the connection drops still completes on reconnect (no duplicate).
+- Form errors for items are stored by a stable row key (`items.r3.unitPrice`) and translated from the index-based keys of validation/server errors, so removing a row never moves an error onto another row. The last remaining item row can't be removed (a bill needs one item).
+- The server's "no more than a year ahead" date check counts from tomorrow (UTC), so a browser ahead of UTC is never refused for a date its own form allowed.
+- `buildItemDoc` computes the line total itself; optional text fields that are empty are left out of documents, not stored as `""`.
+- `listAccessibleTrips` breaks same-date ties with `_creationTime` (always distinct) rather than `createdAt` (can repeat within a millisecond).
+- `listRecent` returns `[]` when signed out (like `get` returning `null`), so a query still subscribed during sign-out can't throw into the error boundary.
+- `BillPerson.link` is `null` for the owner row; for other people (Phase 5+) it's `{ state: "none" | "linked" }` for owner viewers until invitations arrive in Phase 6.
+- Unknown parse input gets its own messages: quantity "Enter a valid quantity, e.g. 1 or 1.5"; dates "Enter a date", "Enter a valid date", "The date can't be more than a year from now"; store "Store must be 60 characters or fewer"; items "Add at least one item" / "A bill can have at most 200 items".
+- The select was hand-written on `radix-ui` (like the dropdown menu), since the shadcn CLI was removed in Phase 0.
+- No split-summary card yet: the plan adds it in Phase 5 with people.
+
+**Browser verification (2026-10-18):** a scripted headless Chrome (Playwright, kept outside the repo) against the running `next dev` + dev deployment: 64/64 checks passed, plus 4 follow-up layout checks, with a clean console. Covered: Alice's empty dashboard ("No bills yet", **Create your first bill**, **New bill**); New bill defaults (today's date, Grocery, one row, the total-only hint, "—" line total, last row not removable); Review blocked by an empty title, a missing price and quantity 0, with inline messages, the title focused, `aria-invalid` + `aria-describedby`, and errors clearing as fields are fixed; the category select; "Imtiaz Grocery" with Cooking Oil 1 × 500 (Dalda · 1 litre), Rice 1.5 × 333.33 = Rs. 500.00 (half-up) and Bread 2 × 125.50 = Rs. 251.00; Enter in the price field and **Add item** each add a row and focus its name; footer "3 items · Total Rs. 1,251.00" above the tab bar at 360 px; the review (details line, qty × price, total, "Paid by you", reconciled shares, expandable share, heading focused); **Back to edit** keeps values; offline **Save bill** → "Couldn't save your bill…" Alert with **Try again**, values kept; back online **Try again** saves and opens the bill; the details page (meta line, Grocery + Owned badges, items, total, reconciled, no edit/delete) survives a reload; with 5 older bills added, the dashboard shows 5 cards, newest first, in date order; Carol's dashboard is empty and Alice's bill URL (and a malformed ID) shows "This bill doesn't exist or you don't have access." with **Back to dashboard**; signed out → `/sign-in`; no horizontal scroll at 360/768/1280 px; at the bottom of the page **Add item** is clear of the sticky footer. Screenshots were reviewed by eye.
+
+**Fixed during browser verification**
+- On a phone the save-failure Alert sat below the shares, out of view when Save was tapped near the top. The review screen now scrolls it into view when it appears.
+
+**Noted, not changed:** at 360 px the narrow Qty column wraps "Quantity must be greater than 0" over four lines. It's readable; widening the column would squeeze the price field instead.
+
+Dev data added to Alice's account (`alice@example.com` / `testpass123`): "Imtiaz Grocery" (Rs. 1,251.00) and "Older bill 1"–"Older bill 5" (dated 10 Jan–10 May 2026).
+
+## Next: Phase 4 — Edit and delete a saved bill
+No human steps needed. Add `paisaToInput` to `format.ts` for prefilling the edit form; `TripForm` already takes `mode: "edit"` and `initialValue`. Item errors are keyed by row, and rows keep `itemId`. Phase 6 note: `src/domain/errors.ts` still lists `TRIP_PARTICIPANT_LIMIT` and lacks `INVITE_PERSON_LINKED`; rename it to `TRIP_PEOPLE_LIMIT` and add the missing code (§8.4).

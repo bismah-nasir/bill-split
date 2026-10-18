@@ -8,7 +8,8 @@ import {
 } from "@/domain/errors";
 
 export type AppError = {
-  code: ErrorCode | "UNKNOWN";
+  /** `OFFLINE`: the request wasn't sent because there's no connection (see `useAppMutation`). */
+  code: ErrorCode | "UNKNOWN" | "OFFLINE";
   message: string;
   fieldErrors: FieldErrors;
 };
@@ -21,3 +22,9 @@ export function toAppError(error: unknown): AppError {
   }
   return { code: "UNKNOWN", message: GENERIC_ERROR_MESSAGE, fieldErrors: {} };
 }
+
+export const OFFLINE_ERROR: AppError = {
+  code: "OFFLINE",
+  message: "You're offline. Check your connection and try again.",
+  fieldErrors: {},
+};

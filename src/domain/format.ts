@@ -51,3 +51,16 @@ export function formatTripDate(isoDate: string): string {
   }
   return `${day} ${MONTHS[month - 1]} ${year}`;
 }
+
+/** 1500 -> "1.5", 2000 -> "2". For edit forms and quantity labels; no trailing zeros. */
+export function milliToInput(quantityMilli: number): string {
+  const whole = Math.trunc(quantityMilli / 1000);
+  const fraction = String(quantityMilli % 1000).padStart(3, "0").replace(/0+$/, "");
+  return fraction.length > 0 ? `${whole}.${fraction}` : String(whole);
+}
+
+/** (1500, "kg") -> "1.5 kg"; (2000) -> "2". */
+export function formatQuantity(quantityMilli: number, unit?: string | null): string {
+  const quantity = milliToInput(quantityMilli);
+  return unit ? `${quantity} ${unit}` : quantity;
+}

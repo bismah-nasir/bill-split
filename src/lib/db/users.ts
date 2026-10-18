@@ -1,14 +1,14 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
-import type { FunctionArgs, FunctionReference } from "convex/server";
+import { useQuery } from "convex/react";
 import { useCallback, useEffect, useState } from "react";
 
 import { isValidUsername } from "@/domain/normalization";
 import type { CurrentUser } from "@/domain/types";
 
 import { api } from "../../../convex/_generated/api";
-import { toAppError, type AppError } from "./errors";
+import type { AppError } from "./errors";
+import { useAppMutation } from "./use-app-mutation";
 
 /** `undefined` while loading, `null` when signed out. */
 export function useCurrentUser(): CurrentUser | null | undefined {
@@ -48,42 +48,22 @@ export function useUsernameAvailability(username: string): UsernameAvailability 
 
 export function useSetUsername() {
   const { run, isPending, error } = useAppMutation(api.users.setUsername);
-  const setUsername = useCallback((username: string) => run({ username }), [run]);
+  const setUsername = useCallback(
+    async (username: string): Promise<AppError | null> => errorOf(await run({ username })),
+    [run],
+  );
   return { setUsername, isPending, error };
 }
 
 export function useUpdateName() {
   const { run, isPending, error } = useAppMutation(api.users.updateName);
-  const updateName = useCallback((name: string) => run({ name }), [run]);
+  const updateName = useCallback(
+    async (name: string): Promise<AppError | null> => errorOf(await run({ name })),
+    [run],
+  );
   return { updateName, isPending, error };
 }
 
-/**
- * Wraps a mutation with pending and error state. `run` resolves to `null` on success,
- * or to the error to show, so forms needn't sync errors through effects.
- */
-function useAppMutation<Mutation extends FunctionReference<"mutation">>(reference: Mutation) {
-  const mutate = useMutation(reference);
-  const [isPending, setIsPending] = useState(false);
-  const [error, setError] = useState<AppError | null>(null);
-
-  const run = useCallback(
-    async (args: FunctionArgs<Mutation>): Promise<AppError | null> => {
-      setIsPending(true);
-      setError(null);
-      try {
-        await mutate(args);
-        return null;
-      } catch (caught) {
-        const appError = toAppError(caught);
-        setError(appError);
-        return appError;
-      } finally {
-        setIsPending(false);
-      }
-    },
-    [mutate],
-  );
-
-  return { run, isPending, error };
+function errorOf(result: { ok: true } | { ok: false; error: AppError }): AppError | null {
+  return result.ok ? null : result.error;
 }
