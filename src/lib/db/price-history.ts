@@ -3,8 +3,8 @@
 import { useQuery } from "convex/react";
 import { useState } from "react";
 
-import { productSearchTerm } from "@/domain/price-history";
-import type { PriceHistory, ProductResult } from "@/domain/types";
+import { MAX_PRODUCT_SEARCH_LENGTH, productSearchTerm } from "@/domain/price-history";
+import type { ItemSuggestion, PriceHistory, ProductResult } from "@/domain/types";
 
 import { api } from "../../../convex/_generated/api";
 
@@ -34,4 +34,26 @@ export function usePriceObservations(productMatchKey: string | null): PriceHisto
     api.priceHistory.getObservations,
     productMatchKey === null ? "skip" : { productMatchKey },
   );
+}
+
+/**
+ * Products the user has recorded before whose name contains `term`, for the item name field.
+ * `null` while the term is shorter than 2 characters or longer than a search allows (nothing
+ * is searched), `undefined` on the first load. While a new term loads, the previous
+ * suggestions stay with `isUpdating` true.
+ */
+export function useItemSuggestions(term: string): {
+  suggestions: ItemSuggestion[] | null | undefined;
+  isUpdating: boolean;
+} {
+  const trimmed = term.trim();
+  const searchable = productSearchTerm(trimmed) !== null && trimmed.length <= MAX_PRODUCT_SEARCH_LENGTH;
+  const current = useQuery(api.items.suggest, searchable ? { term: trimmed } : "skip");
+  const [previous, setPrevious] = useState<ItemSuggestion[] | undefined>(current);
+  // Forget old suggestions once the field no longer searches, so they never reappear for an
+  // unrelated term.
+  const latest = searchable ? (current ?? previous) : undefined;
+  if (latest !== previous) setPrevious(latest);
+  if (!searchable) return { suggestions: null, isUpdating: false };
+  return { suggestions: latest, isUpdating: current === undefined && previous !== undefined };
 }

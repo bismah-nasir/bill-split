@@ -3,10 +3,10 @@
  * how a product's records become a dated price list. Shared by the Price History page and the
  * `priceHistory` queries. Every record passed in must come from a bill the viewer can see.
  */
-import { joinDetails } from "./format";
+import { formatPaisa, joinDetails } from "./format";
 import { normalizeText } from "./normalization";
 import { computePriceChanges } from "./price-change";
-import type { PriceHistory, PriceObservation, ProductResult } from "./types";
+import type { ItemSuggestion, PriceHistory, PriceObservation, ProductResult } from "./types";
 
 export const MIN_PRODUCT_SEARCH_LENGTH = 2;
 export const MAX_PRODUCT_SEARCH_LENGTH = 80;
@@ -14,6 +14,8 @@ export const MAX_PRODUCT_SEARCH_LENGTH = 80;
 export const PRODUCT_RESULTS_LIMIT = 20;
 /** Records shown for one product, newest first. */
 export const MAX_OBSERVATIONS = 200;
+/** Suggestions offered while typing an item name. */
+export const ITEM_SUGGESTIONS_LIMIT = 8;
 
 /** One saved item, with the bill details Price History shows next to it. */
 export type PriceRecord = {
@@ -98,19 +100,42 @@ function groupByProduct(records: PriceRecord[]): PriceRecord[][] {
  * differ in brand, variant, pack size or unit stay separate.
  */
 export function listProducts(records: PriceRecord[]): ProductResult[] {
-  return groupByProduct(records)
-    .map(toProduct)
-    .sort((a, b) => {
-      if (a.latestTripDate !== b.latestTripDate) return a.latestTripDate < b.latestTripDate ? 1 : -1;
-      const byName = normalizeText(a.name).localeCompare(normalizeText(b.name));
-      if (byName !== 0) return byName;
-      return a.productMatchKey < b.productMatchKey ? -1 : a.productMatchKey > b.productMatchKey ? 1 : 0;
-    });
+  return groupByProduct(records).map(toProduct).sort(mostRecentFirst);
+}
+
+/** Most recently bought first (ties: by name, then key). */
+function mostRecentFirst(a: ProductResult, b: ProductResult): number {
+  if (a.latestTripDate !== b.latestTripDate) return a.latestTripDate < b.latestTripDate ? 1 : -1;
+  const byName = normalizeText(a.name).localeCompare(normalizeText(b.name));
+  if (byName !== 0) return byName;
+  return a.productMatchKey < b.productMatchKey ? -1 : a.productMatchKey > b.productMatchKey ? 1 : 0;
 }
 
 /** Products whose item name contains `term` (already normalized), at most `limit`. */
 export function searchProducts(records: PriceRecord[], term: string, limit: number): ProductResult[] {
   return listProducts(records.filter((record) => record.normalizedName.includes(term))).slice(0, limit);
+}
+
+/**
+ * Like `searchProducts`, with the store of each product's latest record, for the item name
+ * suggestions in the bill form.
+ */
+export function suggestProducts(records: PriceRecord[], term: string, limit: number): ItemSuggestion[] {
+  return groupByProduct(records.filter((record) => record.normalizedName.includes(term)))
+    .map((group) => ({ ...toProduct(group), lastStoreName: group[group.length - 1].storeName }))
+    .sort(mostRecentFirst)
+    .slice(0, limit);
+}
+
+/** "last Rs. 560.00 at Imtiaz", or "last Rs. 560.00" when the bill had no store. */
+export function suggestionPriceLine(suggestion: ItemSuggestion): string {
+  const lastPrice = `last ${formatPaisa(suggestion.latestPricePaisa)}`;
+  return suggestion.lastStoreName ? `${lastPrice} at ${suggestion.lastStoreName}` : lastPrice;
+}
+
+/** "Cooking Oil · Dalda · 1l · last Rs. 560.00 at Imtiaz": one suggestion as one line. */
+export function suggestionLabel(suggestion: ItemSuggestion): string {
+  return joinDetails(suggestion.name, productDetailsLine(suggestion), suggestionPriceLine(suggestion)) ?? "";
 }
 
 /**

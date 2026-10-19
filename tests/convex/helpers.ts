@@ -98,3 +98,33 @@ export async function createTrip(as: UserAccessor, overrides: TripOverrides = {}
 export async function updateTrip(as: UserAccessor, tripId: string, overrides: TripOverrides = {}) {
   return await as.mutation(api.trips.update, { tripId, ...tripInput(overrides) });
 }
+
+/**
+ * Makes `name` the only person on `tripId` besides the owner (items kept, paid by the owner)
+ * and invites `username` as that person. Returns the invitation and person IDs.
+ */
+export async function addAndInvite(owner: { as: UserAccessor }, tripId: string, name: string, username: string) {
+  const trip = await owner.as.query(api.trips.get, { tripId });
+  if (!trip) throw new Error("No trip");
+  await updateTrip(owner.as, tripId, {
+    details: { title: trip.title, storeName: trip.storeName ?? "", tripDate: trip.tripDate },
+    people: [{ key: "new:1", name }],
+    items: trip.items.map((item) => ({
+      itemId: item.id,
+      name: item.name,
+      brand: item.brand ?? "",
+      packSize: item.packSize ?? "",
+      unitPrice: String(item.unitPricePaisa / 100),
+    })),
+  });
+  const updated = await owner.as.query(api.trips.get, { tripId });
+  const personId = updated?.people.find((person) => person.name === name)?.personId;
+  if (!personId) throw new Error(`No ${name} on the bill`);
+  const { invitationId } = await owner.as.mutation(api.invitations.invite, {
+    tripId,
+    personId,
+    via: "username",
+    identifier: username,
+  });
+  return { invitationId, personId };
+}

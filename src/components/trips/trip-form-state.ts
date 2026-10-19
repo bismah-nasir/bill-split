@@ -27,6 +27,11 @@ export type FormItem = ItemInput & { rowKey: string };
 
 export type ItemField = "name" | "brand" | "variant" | "packSize" | "unit" | "quantity" | "unitPrice";
 
+/** The fields that make up an item's product (its Price History match key). */
+export const PRODUCT_FIELDS = ["name", "brand", "variant", "packSize", "unit"] as const;
+
+export type ProductField = (typeof PRODUCT_FIELDS)[number];
+
 export type TripFormState = {
   step: "edit" | "review";
   details: TripDetailsInput;
@@ -46,6 +51,8 @@ export type TripFormState = {
 export type TripFormAction =
   | { type: "setDetail"; field: keyof TripDetailsInput; value: string }
   | { type: "setItem"; rowKey: string; field: ItemField; value: string }
+  /** Sets the fields that identify a product at once, e.g. from an item suggestion. */
+  | { type: "fillProduct"; rowKey: string; product: Record<ProductField, string> }
   | { type: "blur"; path: string }
   | { type: "addItem" }
   | { type: "removeItem"; rowKey: string }
@@ -141,6 +148,15 @@ export function tripFormReducer(state: TripFormState, action: TripFormAction): T
         item.rowKey === action.rowKey ? { ...item, [action.field]: action.value } : item,
       );
       return recheckIfShown({ ...state, items }, itemPath(action.rowKey, action.field));
+    }
+    case "fillProduct": {
+      const items = state.items.map((item) =>
+        item.rowKey === action.rowKey ? { ...item, ...action.product } : item,
+      );
+      return PRODUCT_FIELDS.reduce(
+        (next, field) => recheckIfShown(next, itemPath(action.rowKey, field)),
+        { ...state, items },
+      );
     }
     case "blur":
       return withError(state, action.path, currentErrors(state)[action.path]);

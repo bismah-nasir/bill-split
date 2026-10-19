@@ -41,6 +41,7 @@ export function ItemEditor({ items, errors, people, dispatch }: ItemEditorProps)
             hint={index === 0 ? TOTAL_ONLY_HINT : undefined}
             onChange={(field, value) => dispatch({ type: "setItem", rowKey: item.rowKey, field, value })}
             onBlur={(field) => dispatch({ type: "blur", path: itemPath(item.rowKey, field) })}
+            onFillProduct={(product) => dispatch({ type: "fillProduct", rowKey: item.rowKey, product })}
             onAssigneesChange={(assigneeKeys) =>
               dispatch({ type: "setAssignees", rowKey: item.rowKey, assigneeKeys })
             }

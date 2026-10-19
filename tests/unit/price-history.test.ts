@@ -10,6 +10,8 @@ import {
   productKeyPrefix,
   productSearchTerm,
   searchProducts,
+  suggestionLabel,
+  suggestProducts,
   type PriceRecord,
 } from "../../src/domain/price-history";
 
@@ -91,6 +93,29 @@ describe("listProducts / searchProducts", () => {
     ]);
     expect(searchProducts(records, "oil", 1)).toHaveLength(1);
     expect(searchProducts(records, "sugar", 20)).toEqual([]);
+  });
+});
+
+describe("suggestProducts / suggestionLabel", () => {
+  it("adds the store of each product's latest record, most recent first, up to the limit", () => {
+    const records = [
+      record({ tripDate: "2026-09-01", storeName: "Metro", unitPricePaisa: 50000 }),
+      record({ tripDate: "2026-10-12", storeName: "Imtiaz", unitPricePaisa: 56000 }),
+      record({ name: "Coconut oil", brand: null, packSize: null, tripDate: "2026-10-01", storeName: null }),
+      record({ name: "Olive Oil", tripDate: "2026-10-20" }),
+      record({ name: "Rice", tripDate: "2026-10-30" }),
+    ];
+    const suggestions = suggestProducts(records, "oil", 2);
+    expect(suggestions.map(({ name, lastStoreName, latestPricePaisa, observationCount }) => ({
+      name, lastStoreName, latestPricePaisa, observationCount,
+    }))).toEqual([
+      { name: "Olive Oil", lastStoreName: "Imtiaz", latestPricePaisa: 50000, observationCount: 1 },
+      { name: "Cooking Oil", lastStoreName: "Imtiaz", latestPricePaisa: 56000, observationCount: 2 },
+    ]);
+    expect(suggestionLabel(suggestions[1])).toBe("Cooking Oil · Dalda · 1 litre · last Rs. 560.00 at Imtiaz");
+
+    const [coconut] = suggestProducts(records, "coco", 8);
+    expect(suggestionLabel(coconut)).toBe("Coconut oil · last Rs. 500.00");
   });
 });
 

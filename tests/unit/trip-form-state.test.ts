@@ -221,3 +221,32 @@ describe("people in the form", () => {
     expect(isFormDirty(state, initial)).toBe(true);
   });
 });
+
+describe("fillProduct", () => {
+  const apply = (state: TripFormState, ...actions: TripFormAction[]) => actions.reduce(tripFormReducer, state);
+  const product = { name: "Cooking Oil", brand: "Dalda", variant: "", packSize: "1 litre", unit: "" };
+
+  it("replaces the row's product fields and leaves quantity, price, payers and other rows alone", () => {
+    let state = apply(initTripFormState(newTripValue()), { type: "addItem" });
+    const [first, second] = state.items.map((item) => item.rowKey);
+    state = apply(
+      state,
+      { type: "setItem", rowKey: first, field: "variant", value: "Extra virgin" },
+      { type: "setItem", rowKey: first, field: "quantity", value: "2" },
+      { type: "setItem", rowKey: first, field: "unitPrice", value: "450" },
+      { type: "fillProduct", rowKey: first, product },
+    );
+    expect(state.items[0]).toMatchObject({ ...product, quantity: "2", unitPrice: "450", assigneeKeys: [OWNER_KEY] });
+    expect(state.items[1]).toMatchObject({ rowKey: second, name: "", brand: "", packSize: "" });
+  });
+
+  it("clears an error already shown on the name", () => {
+    let state = initTripFormState(newTripValue());
+    const { rowKey } = state.items[0];
+    state = apply(state, { type: "blur", path: itemPath(rowKey, "name") });
+    expect(state.errors[itemPath(rowKey, "name")]).toBeDefined();
+
+    state = apply(state, { type: "fillProduct", rowKey, product });
+    expect(state.errors[itemPath(rowKey, "name")]).toBeUndefined();
+  });
+});

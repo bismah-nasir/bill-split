@@ -11,6 +11,7 @@
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
 import type * as invitations from "../invitations.js";
+import type * as items from "../items.js";
 import type * as lib_access from "../lib/access.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_errors from "../lib/errors.js";
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   http: typeof http;
   invitations: typeof invitations;
+  items: typeof items;
   "lib/access": typeof lib_access;
   "lib/auth": typeof lib_auth;
   "lib/errors": typeof lib_errors;

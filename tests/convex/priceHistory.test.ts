@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { api } from "../../convex/_generated/api";
-import { createTrip, createUser, errorDataOf, setupTest, updateTrip, type TestConvex } from "./helpers";
+import { addAndInvite, createTrip, createUser, errorDataOf, setupTest, updateTrip, type TestConvex } from "./helpers";
 
 type User = Awaited<ReturnType<typeof createUser>>;
 
@@ -34,30 +34,8 @@ async function aliceWithThreeBills(t: TestConvex) {
 }
 
 /** Puts Bob on `tripId` as "Bob" and invites him; returns the invitation and person IDs. */
-async function inviteBob(owner: User, tripId: string) {
-  const trip = await owner.as.query(api.trips.get, { tripId });
-  if (!trip) throw new Error("No trip");
-  await updateTrip(owner.as, tripId, {
-    details: { title: trip.title, storeName: trip.storeName ?? "", tripDate: trip.tripDate },
-    people: [{ key: "new:1", name: "Bob" }],
-    items: trip.items.map((item) => ({
-      itemId: item.id,
-      name: item.name,
-      brand: item.brand ?? "",
-      packSize: item.packSize ?? "",
-      unitPrice: String(item.unitPricePaisa / 100),
-    })),
-  });
-  const updated = await owner.as.query(api.trips.get, { tripId });
-  const personId = updated?.people.find((person) => person.name === "Bob")?.personId;
-  if (!personId) throw new Error("No Bob on the bill");
-  const { invitationId } = await owner.as.mutation(api.invitations.invite, {
-    tripId,
-    personId,
-    via: "username",
-    identifier: "bob",
-  });
-  return { invitationId, personId };
+function inviteBob(owner: User, tripId: string) {
+  return addAndInvite(owner, tripId, "Bob", "bob");
 }
 
 describe("priceHistory.getObservations", () => {

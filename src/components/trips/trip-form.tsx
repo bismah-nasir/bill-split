@@ -234,7 +234,7 @@ function ReviewStep({ state, isSaving, saveLabel, onBack, onSave }: ReviewStepPr
       </h2>
 
       <Card className="flex flex-col gap-8 p-16 md:p-24">
-        <p className="type-h3 break-words">{details.title}</p>
+        <p className="type-h3 wrap-break-word">{details.title}</p>
         <p className="type-body-sm text-ink-secondary">
           {tripMetaLine(details.storeName, details.tripDate)}
         </p>

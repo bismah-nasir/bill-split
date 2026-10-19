@@ -146,6 +146,9 @@ export type ProductResult = {
   latestTripDate: string;
 };
 
+/** A product offered while typing an item name, with where it was last bought. */
+export type ItemSuggestion = ProductResult & { lastStoreName: string | null };
+
 /** One saved price of a product, on one accessible bill. */
 export type PriceObservation = {
   itemId: string;

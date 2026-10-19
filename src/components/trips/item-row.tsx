@@ -9,10 +9,19 @@ import { MoneyText } from "@/components/ui/money-text";
 import { TextField } from "@/components/ui/text-field";
 import { formatPaisa } from "@/domain/format";
 import { allocateEqually, lineTotalPaisa, parseQuantityToMilli, parseRupeesToPaisa } from "@/domain/money";
+import type { ItemSuggestion } from "@/domain/types";
 import { cn } from "@/lib/utils";
 
+import { ItemNameCombobox } from "./item-name-combobox";
 import { ParticipantPicker, type PickerPerson } from "./participant-picker";
-import { fieldId, itemPath, type FormItem, type ItemField } from "./trip-form-state";
+import {
+  fieldId,
+  itemPath,
+  PRODUCT_FIELDS,
+  type FormItem,
+  type ItemField,
+  type ProductField,
+} from "./trip-form-state";
 
 const DETAIL_FIELDS: { field: ItemField; label: string; placeholder?: string }[] = [
   { field: "brand", label: "Brand" },
@@ -32,6 +41,8 @@ type ItemRowProps = {
   hint?: string;
   onChange: (field: ItemField, value: string) => void;
   onBlur: (field: ItemField) => void;
+  /** Sets name, brand, variant, pack size and unit together (a chosen suggestion). */
+  onFillProduct: (product: Record<ProductField, string>) => void;
   onAssigneesChange: (keys: string[]) => void;
   onRemove: () => void;
   /** Enter in the price field adds the next row. */
@@ -48,17 +59,24 @@ export function ItemRow({
   hint,
   onChange,
   onBlur,
+  onFillProduct,
   onAssigneesChange,
   onRemove,
   onAddItem,
 }: ItemRowProps) {
   const number = index + 1;
   const errorOf = (field: string) => errors[itemPath(item.rowKey, field)];
+  // The price of the suggestion chosen for this row, until the product is changed by hand.
+  const [lastPricePaisa, setLastPricePaisa] = React.useState<number | null>(null);
+  const change = (field: ItemField, value: string) => {
+    if ((PRODUCT_FIELDS as readonly string[]).includes(field)) setLastPricePaisa(null);
+    onChange(field, value);
+  };
   const fieldProps = (field: ItemField) => ({
     id: fieldId(itemPath(item.rowKey, field)),
     value: item[field],
     error: errorOf(field),
-    onChange: (event: React.ChangeEvent<HTMLInputElement>) => onChange(field, event.target.value),
+    onChange: (event: React.ChangeEvent<HTMLInputElement>) => change(field, event.target.value),
     onBlur: () => onBlur(field),
   });
 
@@ -68,6 +86,19 @@ export function ItemRow({
   );
   const showDetails = detailsOpen || hasDetailError;
   const detailsId = React.useId();
+
+  // Fills the product but not the price, and opens More details so the filled fields show.
+  function selectSuggestion(suggestion: ItemSuggestion) {
+    onFillProduct({
+      name: suggestion.name,
+      brand: suggestion.brand ?? "",
+      variant: suggestion.variant ?? "",
+      packSize: suggestion.packSize ?? "",
+      unit: suggestion.unit ?? "",
+    });
+    setDetailsOpen(true);
+    setLastPricePaisa(suggestion.latestPricePaisa);
+  }
 
   const quantity = parseQuantityToMilli(item.quantity);
   const unitPrice = parseRupeesToPaisa(item.unitPrice);
@@ -92,7 +123,14 @@ export function ItemRow({
           </Button>
         </div>
 
-        <TextField label="Name" autoComplete="off" {...fieldProps("name")} />
+        <ItemNameCombobox
+          id={fieldId(itemPath(item.rowKey, "name"))}
+          value={item.name}
+          error={errorOf("name")}
+          onChange={(value) => change("name", value)}
+          onBlur={() => onBlur("name")}
+          onSelectSuggestion={selectSuggestion}
+        />
 
         <div className="flex items-start gap-8">
           <TextField
@@ -108,6 +146,7 @@ export function ItemRow({
             inputMode="decimal"
             autoComplete="off"
             className="flex-1"
+            hint={lastPricePaisa === null ? undefined : `Last price ${formatPaisa(lastPricePaisa)}`}
             {...fieldProps("unitPrice")}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
