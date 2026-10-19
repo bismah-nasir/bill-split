@@ -3,9 +3,12 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/error-state";
 import { LoadingState } from "@/components/ui/loading-state";
 import type { CurrentUser } from "@/domain/types";
 import { useAuthStatus, useSignOut } from "@/lib/auth/hooks";
+import { useConnectionTrouble } from "@/lib/db/connection";
 import { useCurrentUser } from "@/lib/db/users";
 
 export type OnboardedAccount = CurrentUser & { username: string };
@@ -74,6 +77,26 @@ export function AccountGate({ children }: { children: React.ReactNode }) {
   const user = status.kind === "ready" ? status.user : null;
   const value = React.useMemo(() => (user ? { user, signOut } : null), [user, signOut]);
 
-  if (isSigningOut || !value) return <LoadingState fullPage />;
+  if (isSigningOut || !value) return <AccountLoading />;
   return <AccountContext value={value}>{children}</AccountContext>;
+}
+
+/** The loading state, or, when the server can't be reached for a while, a way out. */
+function AccountLoading() {
+  const isTrouble = useConnectionTrouble();
+  if (!isTrouble) return <LoadingState fullPage />;
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-content items-center px-16 md:px-24">
+      <ErrorState
+        className="w-full"
+        title="Can't reach BillSplit"
+        description="Check your internet connection. We'll keep trying, or you can reload the page."
+        action={
+          <Button variant="secondary" onClick={() => window.location.reload()}>
+            Reload
+          </Button>
+        }
+      />
+    </main>
+  );
 }

@@ -77,4 +77,4 @@ export function Field({ label, hideLabel, id, hint, error, success, className, c
 
 /** The bordered box shared by text inputs and select triggers. */
 export const controlClassName =
-  "h-control-md w-full min-w-0 rounded-md border border-line-strong bg-surface px-14 type-body text-ink transition-colors duration-fast ease-standard placeholder:text-ink-muted focus:border-primary disabled:opacity-50 aria-invalid:border-error aria-invalid:focus:border-error";
+  "h-control-md w-full min-w-0 rounded-md border border-line-control bg-surface px-14 type-body text-ink transition-colors duration-fast ease-standard placeholder:text-ink-muted focus:border-primary disabled:opacity-50 aria-invalid:border-error aria-invalid:focus:border-error";

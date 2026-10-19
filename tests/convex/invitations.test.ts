@@ -175,6 +175,20 @@ describe("invitations.invite", () => {
     });
   });
 
+  it("keeps one row when the same invitation is sent twice at once", async () => {
+    const { t, alice, tripId, benId } = await setup();
+    const results = await Promise.allSettled([
+      invite(alice, tripId, benId, "ben_doe"),
+      invite(alice, tripId, benId, "ben_doe"),
+    ]);
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    const rejected = results.filter((result) => result.status === "rejected");
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0].reason as { data?: unknown }).data).toMatchObject({ code: "INVITE_ALREADY_PENDING" });
+    expect(await invitationRows(t, tripId)).toHaveLength(1);
+  });
+
   it("refuses the owner's own person and people from other bills", async () => {
     const { alice, tripId } = await setup();
     const trip = await alice.as.query(api.trips.get, { tripId });

@@ -2,11 +2,24 @@
 
 A private, account-based web app for recording bills, splitting them fairly by item, sharing them only with the people involved, and comparing item prices over time. Currency: PKR.
 
+- **Bills:** record a shopping trip or meal with its items, quantities and prices. Add anyone to a bill by typing a name (no account needed), assign each item to one or more people, and get exact per-person shares plus a split summary sized for one phone screenshot.
+- **Sharing:** the owner can link a person on the bill to a registered account by username or email. The invitee accepts or declines; once accepted they can view the bill read-only. Names are never matched to accounts automatically, and linking never changes the split.
+- **History:** search and filter saved bills, see what you paid for an item across your bills (with price changes between comparable entries), get item suggestions while typing, and see a monthly spending summary.
+- **Privacy:** everything is private to the bill's owner and the accounts they linked. Account names and emails are never shown to other users.
+
 The full build plan is in [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md); progress is tracked in [docs/PROGRESS.md](docs/PROGRESS.md). Coding rules for contributors and agents are in [RULES.md](RULES.md).
 
 ## Tech stack
 
 Next.js (App Router) · TypeScript · Tailwind CSS v4 with design tokens · shadcn/ui · Convex (database and backend) · Convex Auth (email and password) · Vitest.
+
+## Architecture
+
+- **Client-rendered app pages.** Pages under `src/app/(app)/` render on the client once the signed-in user has loaded, and read live data through Convex's reactive queries, so changes (an accepted invitation, an edited bill) appear without a reload. There are no API routes.
+- **Convex is the backend and the only authority.** Every exported query and mutation in `convex/*.ts` starts with an auth helper from `convex/lib/auth.ts` (`getCurrentUser`, `requireCurrentUser`, `requireOnboardedUser`, `requireTripOwner`). Access to a bill comes only from a `tripPeople` row linking the caller to it (the owner, or an accepted invitation). Inaccessible bills look exactly like missing ones (`null` / `NOT_FOUND`). No function takes a user ID as the caller's identity.
+- **Bounded reads.** Every query reads through an index with `.take(cap)`, `.first()` or `.unique()`; see the limits below.
+- **Shared domain logic.** `src/domain/` holds pure TypeScript (money, validation, normalization, price changes) used by both the form preview and the server, which re-validates and recomputes everything it saves.
+- **Service boundaries.** Only `src/lib/db/` talks to Convex and only `src/lib/auth/` talks to Convex Auth. They return plain app types and map every error to a friendly message (`toAppError`, `toAuthError`), so the UI never shows technical details. ESLint enforces the boundaries.
 
 ## Prerequisites
 
@@ -32,6 +45,39 @@ npm run dev
 ```
 
 See [.env.example](.env.example) for the variables. Auth keys live on the Convex deployment, never in `.env.local` or the repo.
+
+## Environment variables
+
+| Variable | Where | Set by |
+|---|---|---|
+| `CONVEX_DEPLOYMENT` | `.env.local` | `npx convex dev` |
+| `NEXT_PUBLIC_CONVEX_URL` | `.env.local` (dev); injected by `npx convex deploy` in Vercel | `npx convex dev` / `npx convex deploy` |
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | `.env.local` | `npx convex dev` |
+| `SITE_URL` | Convex deployment | `npx @convex-dev/auth` (dev), `npx convex env set --prod SITE_URL …` (prod) |
+| `JWT_PRIVATE_KEY`, `JWKS` | Convex deployment | `npx @convex-dev/auth` (generated; separate keys per deployment) |
+| `CONVEX_DEPLOY_KEY` | Vercel (production) | Copied from the Convex dashboard |
+
+The two `NEXT_PUBLIC_` values are public URLs, not secrets. No secret is ever exposed to the browser. Only `src/lib/db/client.ts` reads an environment variable in the app.
+
+## Test accounts
+
+There's no email verification, so test accounts are created by signing up in the app. For manual testing use **Alice** (`alice@example.com`, the bill owner), **Bob** (`bob@example.com`, an invitee) and **Carol** (`carol@example.com`, unrelated), each with a development-only password such as `testpass123`, in separate browser profiles or private windows. People without accounts are just names typed on a bill (e.g. Ben, Sara); for "linked later" checks sign up **Ben Doe** with the username `ben_doe`. Never reuse these passwords on production data you care about.
+
+## Deploying to production
+
+1. In the Convex dashboard, create the production deployment, then generate its own auth keys (never reuse the dev keys):
+   ```bash
+   npx @convex-dev/auth --prod
+   ```
+2. In Vercel, import the repository and:
+   - set the **Build Command** to `npx convex deploy --cmd 'npm run build'`;
+   - add `CONVEX_DEPLOY_KEY` (a production deploy key from the Convex dashboard). `convex deploy` pushes the functions and injects `NEXT_PUBLIC_CONVEX_URL` into the build. No auth variables go in Vercel.
+3. Deploy, then point Convex Auth at the live URL:
+   ```bash
+   npx convex env set --prod SITE_URL https://<app>.vercel.app
+   ```
+
+Check the current [Convex + Vercel guide](https://docs.convex.dev/production/hosting/vercel) and [Convex Auth production docs](https://labs.convex.dev/auth/production) if any step differs.
 
 ## Scripts
 

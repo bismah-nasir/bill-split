@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cva } from "class-variance-authority";
 
 import type { NavItem } from "./nav-items";
-import { PendingInvitationsBadge } from "./pending-invitations-badge";
+import { PendingInvitationsBadge, PendingInvitationsText } from "./pending-invitations-badge";
 
 const navLinkVariants = cva(
   "flex items-center transition-colors duration-fast ease-standard aria-[current=page]:text-primary",
@@ -38,13 +38,14 @@ export function NavLink({ item, variant }: NavLinkProps) {
       {variant === "tab" ? (
         <span className="relative">
           <Icon aria-hidden className="size-icon-xl" />
-          {item.badge && <PendingInvitationsBadge className="absolute -top-6 left-12" />}
+          {item.badge && <PendingInvitationsBadge decorative className="absolute -top-6 left-12" />}
         </span>
       ) : (
         <Icon aria-hidden className="size-icon-md" />
       )}
       {item.label}
       {variant === "inline" && item.badge && <PendingInvitationsBadge />}
+      {variant === "tab" && item.badge && <PendingInvitationsText />}
     </Link>
   );
 }

@@ -133,11 +133,6 @@ export function suggestionPriceLine(suggestion: ItemSuggestion): string {
   return suggestion.lastStoreName ? `${lastPrice} at ${suggestion.lastStoreName}` : lastPrice;
 }
 
-/** "Cooking Oil · Dalda · 1l · last Rs. 560.00 at Imtiaz": one suggestion as one line. */
-export function suggestionLabel(suggestion: ItemSuggestion): string {
-  return joinDetails(suggestion.name, productDetailsLine(suggestion), suggestionPriceLine(suggestion)) ?? "";
-}
-
 /**
  * The price list of one product. `records` holds every accessible record with the product's
  * item name, including other variants. Returns `null` when the product has no records.

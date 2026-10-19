@@ -6,7 +6,7 @@ import type { PriceObservation } from "@/domain/types";
 
 import { PriceChange } from "./price-change";
 
-const billLinkClassName = "text-primary underline-offset-4 hover:underline";
+const billLinkClassName = "text-primary underline underline-offset-4";
 
 /**
  * A product's price records, newest first: a card per record on phones, a table from `md`.

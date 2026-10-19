@@ -75,7 +75,7 @@ function Chip({ pressed, onClick, children }: ChipProps) {
         "inline-flex h-control-sm max-w-full items-center rounded-pill border px-14 type-button-sm transition-colors duration-fast ease-standard",
         pressed
           ? "border-primary bg-primary-soft text-primary"
-          : "border-line-strong bg-surface text-ink-secondary hover:bg-surface-subtle",
+          : "border-line-control bg-surface text-ink-secondary hover:bg-surface-subtle",
       )}
     >
       <span className="truncate">{children}</span>

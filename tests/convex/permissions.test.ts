@@ -187,7 +187,7 @@ async function accessFixture() {
     users[name].as.mutation(api.invitations.respond, { invitationId, accept });
 
   await respond("linked", (await invite("linked")).invitationId, true);
-  await invite("pending");
+  const pendingInvitationId = (await invite("pending")).invitationId;
   await respond("declined", (await invite("declined")).invitationId, false);
   await alice.as.mutation(api.invitations.cancel, { invitationId: (await invite("cancelled")).invitationId });
   await respond("unlinked", (await invite("unlinked")).invitationId, true);
@@ -200,7 +200,41 @@ async function accessFixture() {
     items: [{ assigneeKeys: ["owner", ...kept.map((person) => person.key)] }],
   });
 
-  return { t, alice, users, tripId };
+  return { t, alice, users, tripId, pendingInvitationId, linkedPersonId: personOf("linked") };
+}
+
+type Reader = Pick<ReturnType<typeof setupTest>, "query">;
+
+/** What a caller can learn about Alice's bill through every read function. */
+async function readsOf(as: Reader, tripId: string, productMatchKey: string) {
+  const history = await as.query(api.trips.listHistory, { ownership: "all", sort: "date_desc" });
+  const observations = await as.query(api.priceHistory.getObservations, { productMatchKey });
+  return {
+    trip: (await as.query(api.trips.get, { tripId }))?.id ?? null,
+    recent: (await as.query(api.trips.listRecent)).map((trip) => trip.id),
+    history: history.trips.map((trip) => trip.id),
+    products: (await as.query(api.priceHistory.searchProducts, { term: "cooking" })).map(
+      (product) => product.productMatchKey,
+    ),
+    observations: observations?.observations.map((observation) => observation.tripId) ?? null,
+    suggestions: (await as.query(api.items.suggest, { term: "cooking" })).map(
+      (suggestion) => suggestion.productMatchKey,
+    ),
+  };
+}
+
+async function productKeyOf(alice: { as: Reader }) {
+  const [product] = await alice.as.query(api.priceHistory.searchProducts, { term: "cooking" });
+  return product.productMatchKey;
+}
+
+async function invitationsOf(t: ReturnType<typeof setupTest>, tripId: Id<"trips">) {
+  return await t.run((ctx) =>
+    ctx.db
+      .query("tripInvitations")
+      .withIndex("by_trip", (q) => q.eq("tripId", tripId))
+      .collect(),
+  );
 }
 
 describe("access matrix", () => {
@@ -269,5 +303,76 @@ describe("access matrix", () => {
     expect(keys.has("email")).toBe(false);
     const json = JSON.stringify(detail);
     expect(json).not.toMatch(/Account Name|Alice Account|@example\.com/);
+  });
+});
+
+describe("access matrix across every function", () => {
+  it("lets the owner and a linked participant reach the bill through every read", async () => {
+    const { alice, users, tripId } = await accessFixture();
+    const key = await productKeyOf(alice);
+    const everything = {
+      trip: tripId,
+      recent: [tripId],
+      history: [tripId],
+      products: [key],
+      observations: [tripId],
+      suggestions: [key],
+    };
+    expect(await readsOf(alice.as, tripId, key)).toEqual(everything);
+    expect(await readsOf(users.linked.as, tripId, key)).toEqual(everything);
+  });
+
+  it.each(["pending", "declined", "cancelled", "unlinked", "removed", "unrelated", "signed out"] as const)(
+    "shows a %s caller nothing through any read",
+    async (name) => {
+      const { t, alice, users, tripId } = await accessFixture();
+      const key = await productKeyOf(alice);
+      const as = name === "signed out" ? t : users[name].as;
+      expect(await readsOf(as, tripId, key)).toEqual({
+        trip: null,
+        recent: [],
+        history: [],
+        products: [],
+        observations: null,
+        suggestions: [],
+      });
+    },
+  );
+
+  it.each([
+    ["linked", "FORBIDDEN"],
+    ["pending", "NOT_FOUND"],
+    ["declined", "NOT_FOUND"],
+    ["cancelled", "NOT_FOUND"],
+    ["unlinked", "NOT_FOUND"],
+    ["removed", "NOT_FOUND"],
+    ["unrelated", "NOT_FOUND"],
+    ["signed out", "UNAUTHENTICATED"],
+  ] as const)("refuses a %s caller every owner-only invitation action (%s)", async (name, code) => {
+    const { t, users, tripId, pendingInvitationId, linkedPersonId } = await accessFixture();
+    const as = name === "signed out" ? t : users[name].as;
+    const id = tripId as Id<"trips">;
+    const before = { ...(await snapshot(t, id)), invitations: await invitationsOf(t, id) };
+
+    const attempts = [
+      () => as.mutation(api.invitations.invite, { tripId, newPersonName: "Zed", via: "username", identifier: "unrelated" }),
+      () => as.mutation(api.invitations.cancel, { invitationId: pendingInvitationId }),
+      () => as.mutation(api.invitations.unlink, { personId: linkedPersonId }),
+    ];
+    for (const attempt of attempts) expect(await errorDataOf(attempt)).toMatchObject({ code });
+    expect({ ...(await snapshot(t, id)), invitations: await invitationsOf(t, id) }).toEqual(before);
+  });
+
+  it("lets only the invitee answer an invitation", async () => {
+    const { t, alice, users, pendingInvitationId } = await accessFixture();
+    for (const as of [alice.as, users.linked.as, users.unrelated.as]) {
+      expect(
+        await errorDataOf(() => as.mutation(api.invitations.respond, { invitationId: pendingInvitationId, accept: true })),
+      ).toMatchObject({ code: "NOT_FOUND" });
+    }
+    expect(
+      await errorDataOf(() => t.mutation(api.invitations.respond, { invitationId: pendingInvitationId, accept: true })),
+    ).toMatchObject({ code: "UNAUTHENTICATED" });
+    expect(await users.pending.as.query(api.invitations.pendingCount)).toBe(1);
   });
 });

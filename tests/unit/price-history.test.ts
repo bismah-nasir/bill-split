@@ -10,7 +10,7 @@ import {
   productKeyPrefix,
   productSearchTerm,
   searchProducts,
-  suggestionLabel,
+  suggestionPriceLine,
   suggestProducts,
   type PriceRecord,
 } from "../../src/domain/price-history";
@@ -96,7 +96,7 @@ describe("listProducts / searchProducts", () => {
   });
 });
 
-describe("suggestProducts / suggestionLabel", () => {
+describe("suggestProducts / suggestionPriceLine", () => {
   it("adds the store of each product's latest record, most recent first, up to the limit", () => {
     const records = [
       record({ tripDate: "2026-09-01", storeName: "Metro", unitPricePaisa: 50000 }),
@@ -112,10 +112,10 @@ describe("suggestProducts / suggestionLabel", () => {
       { name: "Olive Oil", lastStoreName: "Imtiaz", latestPricePaisa: 50000, observationCount: 1 },
       { name: "Cooking Oil", lastStoreName: "Imtiaz", latestPricePaisa: 56000, observationCount: 2 },
     ]);
-    expect(suggestionLabel(suggestions[1])).toBe("Cooking Oil · Dalda · 1 litre · last Rs. 560.00 at Imtiaz");
+    expect(suggestionPriceLine(suggestions[1])).toBe("last Rs. 560.00 at Imtiaz");
 
     const [coconut] = suggestProducts(records, "coco", 8);
-    expect(suggestionLabel(coconut)).toBe("Coconut oil · last Rs. 500.00");
+    expect(suggestionPriceLine(coconut)).toBe("last Rs. 500.00");
   });
 });
 

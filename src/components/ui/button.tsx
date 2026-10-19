@@ -12,7 +12,7 @@ const buttonVariants = cva(
         primary:
           "bg-primary text-ink-inverse hover:bg-primary-pressed shadow-floating",
         secondary:
-          "bg-surface border border-line-strong text-ink hover:bg-surface-subtle",
+          "bg-surface border border-line-control text-ink hover:bg-surface-subtle",
         ghost: "bg-transparent text-ink hover:bg-surface-subtle",
         danger: "bg-error text-ink-inverse",
         /** Lower-emphasis destructive action, e.g. Sign out. */

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { useWarnBeforeUnload } from "@/components/forms/use-warn-before-unload";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -51,10 +52,11 @@ export function TripForm({ mode, initialValue, onSubmit, linkedUsernames, ref }:
   const [state, dispatch] = React.useReducer(tripFormReducer, initialValue, initTripFormState);
   const [isSaving, setIsSaving] = React.useState(false);
 
-  React.useImperativeHandle(ref, () => ({ isDirty: () => isFormDirty(state, initialValue) }), [
-    state,
-    initialValue,
-  ]);
+  const isDirty = React.useMemo(() => isFormDirty(state, initialValue), [state, initialValue]);
+
+  React.useImperativeHandle(ref, () => ({ isDirty: () => isDirty }), [isDirty]);
+  // A successful save navigates away with the form still dirty, so stop warning once saving.
+  useWarnBeforeUnload(isDirty && !isSaving);
 
   // Focus the field the reducer asked for (the first error, or a new row's name).
   React.useEffect(() => {

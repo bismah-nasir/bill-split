@@ -52,7 +52,7 @@
   /* Text */
   --color-ink: #0f1d1b;
   --color-ink-secondary: #44524f;
-  --color-ink-muted: #64746f;       /* 4.92:1 on white, 4.60:1 on background */
+  --color-ink-muted: #5e6d68;       /* 5.44:1 on white, 4.94:1 on surface-subtle, 4.51:1 on surface-muted */
   --color-ink-inverse: #ffffff;
 
   /* Semantic — fixed across themes; all pass 4.5:1 as text on white */
@@ -61,7 +61,7 @@
 
   --color-error: #b91c1c;
   --color-error-soft: #fee2e2;
-  --color-error-soft-hover: #fecaca;  /* hover on error-soft; error text on it is 4.65:1 */
+  --color-error-soft-hover: #fed0d0;  /* hover on error-soft; error text on it is 4.67:1 */
 
   --color-warning: #b45309;
   --color-warning-soft: #fef3c7;
@@ -74,6 +74,10 @@
   --color-line-strong: color-mix(in srgb,
       var(--color-ink) 14%,
       transparent);
+
+  /* Edge of a form control (input, select, chip, secondary button): 3.43:1 on white,
+     3.12:1 on surface-subtle, as WCAG 1.4.11 asks. Decorative dividers keep line/line-strong. */
+  --color-line-control: #858c8b;
 
   --color-overlay: color-mix(in srgb,
       var(--color-ink) 55%,

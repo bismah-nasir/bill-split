@@ -4,7 +4,7 @@ import * as React from "react";
 import { Plus } from "lucide-react";
 
 import { controlClassName, Field } from "@/components/ui/field";
-import { productDetailsLine, productSearchTerm, suggestionLabel, suggestionPriceLine } from "@/domain/price-history";
+import { productDetailsLine, productSearchTerm, suggestionPriceLine } from "@/domain/price-history";
 import type { ItemSuggestion } from "@/domain/types";
 import { useItemSuggestions } from "@/lib/db/price-history";
 import { cn } from "@/lib/utils";
@@ -136,7 +136,6 @@ export function ItemNameCombobox({ id, value, error, onChange, onBlur, onSelectS
                     key={suggestion.productMatchKey}
                     id={optionId(index + 1)}
                     active={activeIndex === index + 1}
-                    label={suggestionLabel(suggestion)}
                     onChoose={() => choose(index + 1)}
                   >
                     <span className="type-body-sm font-medium text-ink wrap-break-word">{suggestion.name}</span>
@@ -163,20 +162,17 @@ export function ItemNameCombobox({ id, value, error, onChange, onBlur, onSelectS
 type SuggestionOptionProps = {
   id: string;
   active: boolean;
-  /** The option's accessible name when its visible text reads poorly as one line. */
-  label?: string;
   onChoose: () => void;
   className?: string;
   children: React.ReactNode;
 };
 
-function SuggestionOption({ id, active, label, onChoose, className, children }: SuggestionOptionProps) {
+function SuggestionOption({ id, active, onChoose, className, children }: SuggestionOptionProps) {
   return (
     <li
       id={id}
       role="option"
       aria-selected={active}
-      aria-label={label}
       // Keeps focus in the name field, so choosing doesn't close the list through a blur first.
       onMouseDown={(event) => event.preventDefault()}
       onClick={onChoose}
