@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Plus, ReceiptText, TrendingUp } from "lucide-react";
 
+import { SpendingSummary } from "@/components/dashboard/spending-summary";
 import { useAccount } from "@/components/layout/account-gate";
 import { PageHeader } from "@/components/layout/page-header";
 import { TripCardList, TripCardListSkeleton } from "@/components/trips/trip-card-list";
@@ -35,6 +36,7 @@ export function DashboardView() {
           </>
         }
       />
+      <SpendingSummary />
       <RecentBills />
     </div>
   );

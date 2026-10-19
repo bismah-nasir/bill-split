@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 
 import type { HistoryFilters } from "@/domain/bill-history";
 import type { ItemInput, PersonInput, TripDetailsInput } from "@/domain/trip-validation";
-import type { BillHistoryPage, TripCard, TripDetail } from "@/domain/types";
+import type { BillHistoryPage, SpendingSummary, TripCard, TripDetail } from "@/domain/types";
 
 import { api } from "../../../convex/_generated/api";
 import type { AppError } from "./errors";
@@ -40,6 +40,20 @@ export function useBillHistory(
   const [previous, setPrevious] = useState<BillHistoryPage | undefined>(current);
   if (current !== undefined && current !== previous) setPrevious(current);
   return { page: current ?? previous, isUpdating: current === undefined && previous !== undefined };
+}
+
+/**
+ * The dashboard's spending figures for `month` ("YYYY-MM"). While another month loads, the
+ * previous figures stay on screen (`isUpdating` is true); `summary` is `undefined` only on
+ * first load.
+ */
+export function useSpendingSummary(
+  month: string,
+): { summary: SpendingSummary | undefined; isUpdating: boolean } {
+  const current = useQuery(api.trips.spendingSummary, { month });
+  const [previous, setPrevious] = useState<SpendingSummary | undefined>(current);
+  if (current !== undefined && current !== previous) setPrevious(current);
+  return { summary: current ?? previous, isUpdating: current === undefined && previous !== undefined };
 }
 
 /** `undefined` while loading, `null` when the bill doesn't exist or the user can't see it. */

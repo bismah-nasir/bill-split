@@ -39,6 +39,21 @@ export type BillHistoryPage = {
   totalAccessible: number;
 };
 
+/**
+ * The dashboard's two monthly figures, never mixed: what the user's own person owes across the
+ * bills they can see, and the full totals of the bills they own. Bills count by bill date.
+ */
+export type SpendingSummary = {
+  month: string;
+  /** Σ of the allocations of the user's own person on each accessible bill in the month. */
+  yourSharePaisa: number;
+  /** Accessible bills in the month (owned or linked), including ones where the share is Rs. 0. */
+  yourShareBillCount: number;
+  /** Σ of the totals of bills the user owns in the month. */
+  createdTotalPaisa: number;
+  createdBillCount: number;
+};
+
 /** Someone a bill is split between. Never carries an account's name or email. */
 export type BillPerson = {
   personId: string;

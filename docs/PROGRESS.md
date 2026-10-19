@@ -301,4 +301,21 @@ Dev data added (all password `testpass123`): accounts `carol@example.com` (@caro
 - The debounce lives in the combobox's change handler (not a generic hook), so suggestions are only looked up for text the user typed; an edit page with many prefilled rows sends no queries.
 - The suggestion's "last" price and store come from its most recent record (by bill date, then save time), like `latestPricePaisa` in Price History.
 
-## Next: Phase 10 — Dashboard spending summary
+## Phase 10 — Dashboard spending summary ✅ (2026-10-19)
+
+**Done**
+- Backend: `trips.spendingSummary({ month })` → `{ month, yourSharePaisa, yourShareBillCount, createdTotalPaisa, createdBillCount }`. `month` must match `YYYY-MM` (01–12), else `VALIDATION` with `fieldErrors.month`; signed out → zeros. **Your share**: the caller's `tripPeople` rows (`by_user`, up to `ACCESSIBLE_TRIPS_CAP`), each row's trip kept when its `tripDate` is in the month, then that person's assignments via `by_trip_person`, summed. **Bills you created**: `by_owner_date` range `[month-01, month-31]`, summing `totalPaisa`. Pushed to the dev deployment. No schema change.
+- Domain: new `spending-summary.ts` — `isMonth`, `currentMonth` (local time), `shiftMonth`, `monthDateRange`, `isDateInMonth`, `monthName`, `formatMonthShort` ("Oct 2026"), `formatMonthLong` ("October 2026"), and the tile captions `yourShareCaption` ("Your portion of 3 bills dated in October") / `createdTotalCaption` ("Total of 2 bills you created in October"), singular for 1. `types.ts` `SpendingSummary`.
+- `src/lib/db/trips.ts`: `useSpendingSummary(month)` → `{ summary, isUpdating }` (keeps the previous month's figures on screen while the next loads, like `useBillHistory`).
+- UI: `ui/stat-tile.tsx` (`StatTile`: label, value, caption; `StatTileSkeleton` in the same shape). `MoneyText` size `stat` (see decisions). `components/dashboard/spending-summary.tsx`: a **Spending** section with a month switcher (‹ Oct 2026 ›; icon buttons "Previous month" / "Next month", next disabled at the current local month; the month is announced politely with its full name), the two tiles **Your share** and **Bills you created** (shown with Rs. 0.00 too; dimmed and `aria-busy` while another month loads), and an info line explaining the difference. Placed on the dashboard between the header and Recent bills.
+- Tests (443 passing): `tests/convex/summary.test.ts` (16): a solo bill counts in both figures; Alice's shared dinner (Pizza 3,000 split Alice/Bob/Ben, Drinks 600 Bob) counts 3,600 in her created total and only her 1,000 in her share, matching a manual October sum with a solo bill; Bob gets 1,600 + his own bill, and Alice's bill only in his share; Sep 30 / Nov 1 / a year earlier excluded, Oct 1 and Oct 31 included; editing a bill into another month moves it, deleting removes it; unlinked, declined and pending bills count nothing for Bob; Ben's share (no account) counts toward nobody; Carol's figures are only hers and Alice's are unchanged by Carol's; zeros for an empty month and when signed out; 7 malformed months → `VALIDATION`. `tests/unit/spending-summary.test.ts` (16) for the domain helpers.
+- Verified: `npm run check` (typecheck, lint, tests) passes. No browser testing this phase, by user instruction, so "switching months updates both tiles" is covered by code review and the hook, not checked on screen.
+
+**Decisions / deviations**
+- **`yourShareBillCount` counts every bill the user is on in the month**, including ones where their share is Rs. 0, so the caption's "N bills" matches the bills they'd see for that month.
+- **The share reads the caller's `by_user` rows directly** rather than `listAccessibleTrips`, because it needs each row's person ID (as the plan says) and doesn't need the trips sorted.
+- **Amount size:** `type-numeric` (48 px) doesn't fit a realistic monthly total ("Rs. 300,000.00") in a phone-width tile, so `MoneyText` `size="stat"` uses the h1 size in the numeric font below `md` and `type-numeric` from `md` (tiles side by side). It may wrap after "Rs." for very large sums instead of overflowing.
+- The selected month is component state, not in the URL (the plan doesn't ask for it); it resets to the current month on a fresh visit. There's no lower bound on past months.
+- The "current month" is the browser's local month (like the bill form's default date). Bills dated in the future (allowed up to a year ahead) aren't reachable through the switcher, as the plan specifies.
+
+## Next: Phase 11 — Hardening, full acceptance pass, production deployment

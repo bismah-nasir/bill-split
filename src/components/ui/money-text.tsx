@@ -11,6 +11,8 @@ const moneyTextVariants = cva("font-numeric whitespace-nowrap tabular-nums", {
       body: "text-body",
       h3: "text-h3",
       numeric: "text-numeric",
+      /** A headline figure: `type-numeric` from `md`, smaller on phones; wraps after "Rs." if it must. */
+      stat: "text-h1 whitespace-normal md:text-numeric",
     },
   },
   defaultVariants: { size: "body" },

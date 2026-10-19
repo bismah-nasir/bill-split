@@ -7,14 +7,16 @@ import {
   sortHistory,
 } from "../src/domain/bill-history";
 import type { FieldErrors } from "../src/domain/errors";
+import { isDateInMonth, isMonth, monthDateRange } from "../src/domain/spending-summary";
 import { isIsoDate } from "../src/domain/trip-validation";
-import type { BillHistoryPage } from "../src/domain/types";
+import type { BillHistoryPage, SpendingSummary } from "../src/domain/types";
 import { mutation, query } from "./_generated/server";
 import {
   ACCESSIBLE_TRIPS_CAP,
   HISTORY_PAGE_SIZE,
   listAccessibleTrips,
   MAX_HISTORY_LIMIT,
+  MAX_ITEMS_PER_TRIP,
   RECENT_TRIPS_LIMIT,
 } from "./lib/access";
 import { findTripAccess, getCurrentUser, requireOnboardedUser, requireTripOwner } from "./lib/auth";
@@ -161,6 +163,65 @@ export const listHistory = query({
       hasMore: matches.length > limit,
       totalMatches: matches.length,
       totalAccessible: accessible.length,
+    };
+  },
+});
+
+/**
+ * The dashboard's monthly figures for bills dated in `month` ("YYYY-MM"). "Your share" sums
+ * the allocations of the caller's own person (owner row or linked person) on every bill they
+ * can see; "Bills you created" sums the full totals of the bills they own. People without an
+ * account have no `userId`, so their shares count toward nobody's summary.
+ */
+export const spendingSummary = query({
+  args: { month: v.string() },
+  handler: async (ctx, args): Promise<SpendingSummary> => {
+    if (!isMonth(args.month)) {
+      throw appError("VALIDATION", "Some fields need attention.", { month: "Enter a valid month" });
+    }
+    const empty = {
+      month: args.month,
+      yourSharePaisa: 0,
+      yourShareBillCount: 0,
+      createdTotalPaisa: 0,
+      createdBillCount: 0,
+    };
+    const user = await getCurrentUser(ctx);
+    if (user === null) return empty;
+
+    // The caller's own person on each bill they can see, then that person's assignments.
+    const rows = await ctx.db
+      .query("tripPeople")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .take(ACCESSIBLE_TRIPS_CAP);
+    const shares = await Promise.all(
+      rows.map(async (row) => {
+        const trip = await ctx.db.get(row.tripId);
+        if (trip === null || !isDateInMonth(trip.tripDate, args.month)) return null;
+        const assignments = await ctx.db
+          .query("itemAssignments")
+          .withIndex("by_trip_person", (q) => q.eq("tripId", trip._id).eq("personId", row._id))
+          .take(MAX_ITEMS_PER_TRIP);
+        return assignments.reduce((sum, assignment) => sum + assignment.allocatedAmountPaisa, 0);
+      }),
+    );
+    const inMonth = shares.filter((share) => share !== null);
+
+    const { from, to } = monthDateRange(args.month);
+    const created = await ctx.db
+      .query("trips")
+      .withIndex("by_owner_date", (q) =>
+        q.eq("ownerId", user._id).gte("tripDate", from).lte("tripDate", to),
+      )
+      .take(ACCESSIBLE_TRIPS_CAP);
+
+    return {
+      month: args.month,
+      yourSharePaisa: inMonth.reduce((sum, share) => sum + share, 0),
+      yourShareBillCount: inMonth.length,
+      createdTotalPaisa: created.reduce((sum, trip) => sum + trip.totalPaisa, 0),
+      createdBillCount: created.length,
     };
   },
 });
