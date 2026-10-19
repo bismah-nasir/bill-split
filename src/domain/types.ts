@@ -1,4 +1,5 @@
 import type { Category } from "./categories";
+import type { PriceChange } from "./price-change";
 
 /** Outcome of parsing or validating one value. */
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -127,4 +128,42 @@ export type InvitationSent = {
   status: "pending" | "accepted" | "declined";
   invitedAt: number;
   respondedAt: number | null;
+};
+
+/**
+ * One product in Price History: every accessible item record with the same `productMatchKey`.
+ * Display fields come from the most recent record.
+ */
+export type ProductResult = {
+  productMatchKey: string;
+  name: string;
+  brand: string | null;
+  variant: string | null;
+  packSize: string | null;
+  unit: string | null;
+  observationCount: number;
+  latestPricePaisa: number;
+  latestTripDate: string;
+};
+
+/** One saved price of a product, on one accessible bill. */
+export type PriceObservation = {
+  itemId: string;
+  tripId: string;
+  tripTitle: string;
+  storeName: string | null;
+  tripDate: string;
+  quantityMilli: number;
+  unit: string | null;
+  unitPricePaisa: number;
+  /** The change from the previous (older) record of this product. */
+  change: PriceChange;
+};
+
+/** A product's price records, newest first, and the other products with the same name. */
+export type PriceHistory = {
+  product: ProductResult;
+  observations: PriceObservation[];
+  /** Same item name, different brand, variant, pack size or unit: not compared directly. */
+  otherVariants: ProductResult[];
 };

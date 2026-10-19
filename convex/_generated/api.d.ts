@@ -16,6 +16,7 @@ import type * as lib_auth from "../lib/auth.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_readModels from "../lib/readModels.js";
 import type * as lib_tripWrite from "../lib/tripWrite.js";
+import type * as priceHistory from "../priceHistory.js";
 import type * as trips from "../trips.js";
 import type * as users from "../users.js";
 
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   "lib/errors": typeof lib_errors;
   "lib/readModels": typeof lib_readModels;
   "lib/tripWrite": typeof lib_tripWrite;
+  priceHistory: typeof priceHistory;
   trips: typeof trips;
   users: typeof users;
 }>;

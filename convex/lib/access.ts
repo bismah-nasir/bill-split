@@ -38,3 +38,25 @@ export async function listAccessibleTrips(
           : -1,
     );
 }
+
+/**
+ * Every item on the `cap` most recent bills the user can see, with its bill. Used by product
+ * search and item suggestions, so records from other bills can never reach a result.
+ */
+export async function collectAccessibleItems(
+  ctx: QueryCtx,
+  userId: Id<"users">,
+  cap: number,
+): Promise<{ trip: Doc<"trips">; item: Doc<"items"> }[]> {
+  const trips = await listAccessibleTrips(ctx, userId, cap);
+  const perTrip = await Promise.all(
+    trips.map(async (trip) => {
+      const items = await ctx.db
+        .query("items")
+        .withIndex("by_trip", (q) => q.eq("tripId", trip._id))
+        .take(MAX_ITEMS_PER_TRIP);
+      return items.map((item) => ({ trip, item }));
+    }),
+  );
+  return perTrip.flat();
+}

@@ -1,4 +1,4 @@
-import { House, Mail, ReceiptText, type LucideIcon } from "lucide-react";
+import { House, Mail, ReceiptText, TrendingUp, type LucideIcon } from "lucide-react";
 
 export type NavItem = {
   href: string;
@@ -12,5 +12,6 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Home", icon: House },
   { href: "/trips", label: "Bills", icon: ReceiptText },
+  { href: "/price-history", label: "Prices", icon: TrendingUp },
   { href: "/invitations", label: "Invites", icon: Mail, badge: "pendingInvitations" },
 ];

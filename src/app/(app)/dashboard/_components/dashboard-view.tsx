@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Plus, ReceiptText } from "lucide-react";
+import { Plus, ReceiptText, TrendingUp } from "lucide-react";
 
 import { useAccount } from "@/components/layout/account-gate";
 import { PageHeader } from "@/components/layout/page-header";
@@ -19,12 +19,20 @@ export function DashboardView() {
       <PageHeader
         title={`Hi, ${user.name}`}
         actions={
-          <Button asChild size="lg">
-            <Link href="/trips/new">
-              <Plus aria-hidden className="size-icon-md" />
-              New bill
-            </Link>
-          </Button>
+          <>
+            <Button asChild variant="ghost" size="lg">
+              <Link href="/price-history">
+                <TrendingUp aria-hidden className="size-icon-md" />
+                Compare prices
+              </Link>
+            </Button>
+            <Button asChild size="lg">
+              <Link href="/trips/new">
+                <Plus aria-hidden className="size-icon-md" />
+                New bill
+              </Link>
+            </Button>
+          </>
         }
       />
       <RecentBills />

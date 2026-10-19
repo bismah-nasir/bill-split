@@ -3,6 +3,7 @@
  * the name the owner typed plus a username, never an account's name or email.
  */
 import { personLabel } from "../../src/domain/people";
+import type { PriceRecord } from "../../src/domain/price-history";
 import type { BillPerson, TripCard, TripDetail, TripDetailShare } from "../../src/domain/types";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
@@ -171,5 +172,26 @@ async function linkState(ctx: QueryCtx, person: Doc<"tripPeople">): Promise<NonN
     username: invitee?.username ?? "",
     invitedAt: latest.createdAt,
     respondedAt: latest.respondedAt ?? null,
+  };
+}
+
+/** An item with its bill's details, for Price History. */
+export function toPriceRecord(trip: Doc<"trips">, item: Doc<"items">): PriceRecord {
+  return {
+    itemId: item._id,
+    tripId: trip._id,
+    tripTitle: trip.title,
+    storeName: trip.storeName ?? null,
+    tripDate: trip.tripDate,
+    createdAt: item.createdAt,
+    productMatchKey: item.productMatchKey,
+    normalizedName: item.normalizedName,
+    name: item.name,
+    brand: item.brand ?? null,
+    variant: item.variant ?? null,
+    packSize: item.packSize ?? null,
+    unit: item.unit ?? null,
+    quantityMilli: item.quantityMilli,
+    unitPricePaisa: item.unitPricePaisa,
   };
 }

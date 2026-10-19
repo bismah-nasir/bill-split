@@ -2,7 +2,7 @@
  * One shape for showing a bill's breakdown, built either from the form (review before
  * saving) or from a saved bill, so both screens render through the same components.
  */
-import { formatQuantity } from "@/domain/format";
+import { formatQuantity, joinDetails } from "@/domain/format";
 import { computeBill } from "@/domain/money";
 import { personLabel } from "@/domain/people";
 import { OWNER_KEY, type ValidatedTrip } from "@/domain/trip-validation";
@@ -56,7 +56,7 @@ export function billViewFromForm(trip: ValidatedTrip): BillView {
     items: trip.items.map((item, index) => ({
       key: String(index),
       name: item.name,
-      details: detailsLine(item.brand, item.variant, item.packSize),
+      details: joinDetails(item.brand, item.variant, item.packSize),
       quantityLabel: formatQuantity(item.quantityMilli, item.unit),
       unitPricePaisa: item.unitPricePaisa,
       lineTotalPaisa: bill.items[index].lineTotalPaisa,
@@ -96,7 +96,7 @@ export function billViewFromDetail(trip: TripDetail): BillView {
     items: trip.items.map((item) => ({
       key: item.id,
       name: item.name,
-      details: detailsLine(item.brand, item.variant, item.packSize),
+      details: joinDetails(item.brand, item.variant, item.packSize),
       quantityLabel: formatQuantity(item.quantityMilli, item.unit),
       unitPricePaisa: item.unitPricePaisa,
       lineTotalPaisa: item.lineTotalPaisa,
@@ -122,9 +122,4 @@ export function billViewFromDetail(trip: TripDetail): BillView {
     })),
     reconciled: trip.reconciled,
   };
-}
-
-function detailsLine(...parts: (string | null | undefined)[]): string | null {
-  const present = parts.filter((part) => part);
-  return present.length > 0 ? present.join(" · ") : null;
 }

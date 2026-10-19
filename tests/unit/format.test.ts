@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   formatPaisa,
+  formatPercent,
   formatQuantity,
   formatTripDate,
+  joinDetails,
   milliToInput,
   paisaToInput,
   todayIsoDate,
@@ -96,5 +98,28 @@ describe("paisaToInput", () => {
   it("rejects fractional or negative paisa", () => {
     expect(() => paisaToInput(1.5)).toThrow();
     expect(() => paisaToInput(-100)).toThrow();
+  });
+});
+
+describe("formatPercent", () => {
+  it.each([
+    [12.5, "+12.5%"],
+    [8, "+8.0%"],
+    [-3, "−3.0%"],
+    [-3.4, "−3.4%"],
+    [0, "0%"],
+    [150, "+150.0%"],
+  ])("%d -> %j", (percent, text) => {
+    expect(formatPercent(percent)).toBe(text);
+  });
+});
+
+describe("joinDetails", () => {
+  it("joins the present parts with a middle dot", () => {
+    expect(joinDetails("Dalda", null, "1 litre", undefined, "")).toBe("Dalda · 1 litre");
+  });
+
+  it("returns null when every part is empty", () => {
+    expect(joinDetails(null, "", undefined)).toBeNull();
   });
 });

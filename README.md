@@ -86,6 +86,9 @@ Every read is bounded. The caps live in `convex/lib/access.ts` (item and people 
 | `HISTORY_PAGE_SIZE` | 20 | Bill History "Load more" step |
 | `MAX_HISTORY_LIMIT` | 200 | Bills Bill History shows at most for one search (narrow the filters to find others); in `src/domain/bill-history.ts` |
 | `MAX_HISTORY_SEARCH_LENGTH` | 80 | Characters in a Bill History search; in `src/domain/bill-history.ts` |
+| `PRODUCT_RESULTS_LIMIT` | 20 | Products one Price History search returns; in `src/domain/price-history.ts` |
+| `MAX_PRODUCT_SEARCH_LENGTH` | 80 | Characters in a Price History search (at least 2 to search); in `src/domain/price-history.ts` |
+| `MAX_OBSERVATIONS` | 200 | Price records shown for one product, newest first (changes are still computed over all of them); in `src/domain/price-history.ts` |
 | `MAX_ITEMS_PER_TRIP` | 200 | Items on one bill |
 | `MAX_PEOPLE_PER_TRIP` | 20 | People on one bill, including the owner |
 | `INVITATION_LIST_LIMIT` | 50 | Invitations shown on Invitations → Received and Sent (the nav badge shows "50+"); in `convex/invitations.ts` |

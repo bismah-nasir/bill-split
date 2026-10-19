@@ -65,6 +65,19 @@ export function formatQuantity(quantityMilli: number, unit?: string | null): str
   return unit ? `${quantity} ${unit}` : quantity;
 }
 
+/** 12.5 -> "+12.5%", -3 -> "−3.0%", 0 -> "0%". One decimal; the minus sign is "−". */
+export function formatPercent(percent: number): string {
+  if (percent === 0) return "0%";
+  const sign = percent > 0 ? "+" : "−";
+  return `${sign}${Math.abs(percent).toFixed(1)}%`;
+}
+
+/** ("Dalda", null, "1 litre") -> "Dalda · 1 litre"; `null` when every part is empty. */
+export function joinDetails(...parts: (string | null | undefined)[]): string | null {
+  const present = parts.filter((part) => part);
+  return present.length > 0 ? present.join(" · ") : null;
+}
+
 /** 123456 -> "1234.56", 12550 -> "125.50", 50000 -> "500". For edit forms: no grouping commas. */
 export function paisaToInput(paisa: number): string {
   if (!Number.isSafeInteger(paisa) || paisa < 0) {
