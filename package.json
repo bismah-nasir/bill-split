@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p convex",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm run lint && npm test"
+    "check": "npm run typecheck && npm run lint && npm test",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",
@@ -33,6 +34,7 @@
     "convex-test": "^0.0.62",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
+    "patch-package": "^8.0.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^5.0.5"

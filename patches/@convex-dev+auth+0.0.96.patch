@@ -1,0 +1,21 @@
+diff --git a/node_modules/@convex-dev/auth/dist/nextjs/server/proxy.js b/node_modules/@convex-dev/auth/dist/nextjs/server/proxy.js
+index fe819ee..b402ca5 100644
+--- a/node_modules/@convex-dev/auth/dist/nextjs/server/proxy.js
++++ b/node_modules/@convex-dev/auth/dist/nextjs/server/proxy.js
+@@ -54,8 +54,14 @@ export async function proxyAuthActionToConvex(request, options) {
+             console.error(`Hit error while running \`auth:signIn\`:`);
+             console.error(error);
+             logVerbose(`Clearing auth cookies`, verbose);
+-            // Send raw error message to client, just like Convex Action would
+-            const response = jsonResponse({ error: error.message }, 400);
++            // Send raw error message to client, just like Convex Action would.
++            // Patched: production deployments redact the message, so also forward a
++            // ConvexError's data, in the "Uncaught ConvexError: {...}" form dev shows.
++            const response = jsonResponse({
++                error: error?.data !== undefined
++                    ? `${error.message}\nUncaught ConvexError: ${JSON.stringify(error.data)}`
++                    : error.message,
++            }, 400);
+             await setAuthCookies(response, null, cookieConfig);
+             return response;
+         }

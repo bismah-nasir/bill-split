@@ -38,7 +38,9 @@ export function toAuthError(error: unknown, flow: AuthFlow): AuthError {
 
 /**
  * Convex Auth's Next.js proxy forwards only the error *message* to the browser, so the
- * `ConvexError` payload arrives as text: "… Uncaught ConvexError: {"code":…}".
+ * `ConvexError` payload arrives as text: "… Uncaught ConvexError: {"code":…}". Production
+ * deployments redact that message, so `patches/@convex-dev+auth+*.patch` makes the proxy
+ * append the error's data in the same form (applied by `patch-package` on install).
  */
 function authErrorData(error: unknown): AppErrorData | null {
   if (error instanceof ConvexError && isAppErrorData(error.data)) return error.data;
