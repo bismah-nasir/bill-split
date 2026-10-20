@@ -19,3 +19,21 @@
     @apply outline-2 outline-offset-2 outline-primary;
   }
 }
+
+/* Printing (e.g. a bill's Print button): the page's content only, on white. Elements marked
+   data-print="hide" (navigation, actions, toasts) are left out. Unlayered, so it beats the
+   elements' own display utilities. */
+@media print {
+  html,
+  body {
+    @apply bg-surface;
+  }
+
+  main {
+    @apply py-0;
+  }
+
+  [data-print="hide"] {
+    display: none;
+  }
+}

@@ -126,6 +126,8 @@
 
   --spacing-avatar-xl: 5.5rem;
 
+  --spacing-chart: 10rem;          /* 160px — height of the Price History chart */
+
   --spacing-icon-xs: 0.75rem;
   --spacing-icon-sm: 0.875rem;
   --spacing-icon-md: 1rem;
@@ -135,6 +137,11 @@
 
   --border-width-hairline: 1px;
   --border-width-base: 1.5px;
+
+  /* Chart strokes, in screen pixels (drawn with non-scaling strokes). A point is a round
+     cap on a zero-length line, so its stroke width is its diameter. */
+  --stroke-width-chart-line: 2px;
+  --stroke-width-chart-point: 8px;
 
 
   /* ─── Layout ─────────────────────────────────────────────────────── */
@@ -379,4 +386,16 @@
 
 @utility duration-xslow {
   transition-duration: var(--duration-xslow);
+}
+
+@utility chart-stroke-grid {
+  stroke-width: var(--border-width-hairline);
+}
+
+@utility chart-stroke-line {
+  stroke-width: var(--stroke-width-chart-line);
+}
+
+@utility chart-stroke-point {
+  stroke-width: var(--stroke-width-chart-point);
 }

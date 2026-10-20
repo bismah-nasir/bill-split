@@ -2,9 +2,9 @@
 
 A private, account-based web app for recording bills, splitting them fairly by item, sharing them only with the people involved, and comparing item prices over time. Currency: PKR.
 
-- **Bills:** record a shopping trip or meal with its items, quantities and prices. Add anyone to a bill by typing a name (no account needed), assign each item to one or more people, and get exact per-person shares plus a split summary sized for one phone screenshot.
+- **Bills:** record a shopping trip or meal with its items, quantities and prices. Add anyone to a bill by typing a name (no account needed), assign each item to one or more people, and get exact per-person shares plus a split summary sized for one phone screenshot. Any bill can be printed.
 - **Sharing:** the owner can link a person on the bill to a registered account by username or email. The invitee accepts or declines; once accepted they can view the bill read-only. Names are never matched to accounts automatically, and linking never changes the split.
-- **History:** search and filter saved bills, see what you paid for an item across your bills (with price changes between comparable entries), get item suggestions while typing, and see a monthly spending summary.
+- **History:** search and filter saved bills, see what you paid for an item across your bills (with price changes between comparable entries and a price-over-time chart), get item suggestions while typing, and see a monthly spending summary.
 - **Privacy:** everything is private to the bill's owner and the accounts they linked. Account names and emails are never shown to other users.
 
 The full build plan is in [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md); progress is tracked in [docs/PROGRESS.md](docs/PROGRESS.md). Coding rules for contributors and agents are in [RULES.md](RULES.md).
@@ -71,7 +71,7 @@ There's no email verification, so test accounts are created by signing up in the
    ```
 2. In Vercel, import the repository and:
    - set the **Build Command** to `npx convex deploy --cmd 'npm run build'`;
-   - add `CONVEX_DEPLOY_KEY` (a production deploy key from the Convex dashboard). `convex deploy` pushes the functions and injects `NEXT_PUBLIC_CONVEX_URL` into the build. No auth variables go in Vercel.
+   - add `CONVEX_DEPLOY_KEY` (a production deploy key from the Convex dashboard; the `deployment:deploy` permission is enough). `convex deploy` pushes the functions and injects `NEXT_PUBLIC_CONVEX_URL` into the build. No auth variables go in Vercel.
 3. Deploy, then point Convex Auth at the live URL:
    ```bash
    npx convex env set --prod SITE_URL https://<app>.vercel.app
@@ -111,6 +111,8 @@ Check the current [Convex + Vercel guide](https://docs.convex.dev/production/hos
 Email and password through Convex Auth's Password provider, configured in `convex/auth.ts`. Sessions live in httpOnly cookies (30 days). `src/proxy.ts` redirects signed-out visitors away from app pages and signed-in users from `/`, `/sign-in` and `/sign-up` to the dashboard, but that is only a convenience: every Convex function checks the caller itself.
 
 `convex/auth.ts` wraps the Password provider so that signing up with an existing email always fails (Convex Auth would otherwise sign the caller in when the password matches), and so that sign-in/sign-up failures reach the UI as coded `ConvexError`s, which production deployments don't redact.
+
+Convex Auth's Next.js proxy forwards only an error's message to the browser, and production deployments redact that message, so `patches/@convex-dev+auth+0.0.96.patch` makes the proxy also forward the `ConvexError`'s data. `patch-package` applies it on every `npm install` (`postinstall`) and fails loudly if Convex Auth is upgraded: check whether the new version still needs it before regenerating it.
 
 ## Styling rules (enforced by ESLint)
 

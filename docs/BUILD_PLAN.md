@@ -1840,10 +1840,10 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 
 **Verification checklist**
 
-- [ ] `npm run check` passes, and `npm run build` succeeds locally.
-- [ ] All §16 criteria are ticked on production.
-- [ ] Direct-request privacy test on production: as Carol, call `trips.get` with Alice's trip ID (for example from the browser console through a temporary dev-only hook, or the Convex dashboard "act as user") and get `null`. Do the same as a pending, declined and unlinked invitee.
-- [ ] Lighthouse accessibility score ≥ 90 on dashboard, new bill and bill details.
+- [x] `npm run check` passes, and `npm run build` succeeds locally.
+- [x] All §16 criteria are ticked on production.
+- [x] Direct-request privacy test on production: as Carol, call `trips.get` with Alice's trip ID (for example from the browser console through a temporary dev-only hook, or the Convex dashboard "act as user") and get `null`. Do the same as a pending, declined and unlinked invitee.
+- [x] Lighthouse accessibility score ≥ 90 on dashboard, new bill and bill details.
 
 ---
 
@@ -1863,19 +1863,19 @@ Do this only if the user approves it after Phase 11.
 
 The MVP is accepted when all of these are verified with at least two test accounts (an owner and an invited participant), plus an unrelated third account:
 
-1. [ ] A user can register with name, email, password and confirm password, sign in with email and password, choose a username and create a private bill.
-2. [ ] A private bill is visible to its owner and not visible to an unrelated signed-in user (UI **and** direct query).
-3. [ ] The owner can add people to a bill by name, with no account needed, and split items between them. The bill's split summary fits one phone screenshot.
-4. [ ] The owner can link a person on the bill to a registered user by username or email. Names are never matched to accounts automatically. An invitation stays pending until the invitee accepts or declines it, and accepting, declining, cancelling or unlinking never changes any share.
-5. [ ] A linked participant can view the bill. Pending, declined, cancelled and unlinked invitees, and accounts whose person was removed from the bill, can't.
-6. [ ] The owner can add, edit and delete items and people, and assign each item to one or more people on the bill.
-7. [ ] An item assigned to one person is charged fully to them. An item assigned to several is split equally.
-8. [ ] The bill total and every person's share reconcile exactly after rounding (including uneven paisa).
-9. [ ] A new bill containing the same item doesn't change the price stored in an older bill.
-10. [ ] Users can search and filter saved bills and reopen accessible ones.
-11. [ ] Users can view item price observations from accessible bills and see price changes between comparable entries. Different variants or units aren't compared.
-12. [ ] Price history never reveals records from unrelated users' bills.
-13. [ ] Editing or deleting a bill affects only that bill and its own history and access records.
-14. [ ] The interface works on mobile and desktop with clear validation, empty, loading and error states.
-15. [ ] Authorization is enforced by Convex functions, verified by the automated permission-matrix tests and by direct requests.
-16. [ ] Bills and price records persist across sessions. `npm run check` passes. No hard-coded style values or out-of-folder SDK imports (lint passes).
+1. [x] A user can register with name, email, password and confirm password, sign in with email and password, choose a username and create a private bill.
+2. [x] A private bill is visible to its owner and not visible to an unrelated signed-in user (UI **and** direct query).
+3. [x] The owner can add people to a bill by name, with no account needed, and split items between them. The bill's split summary fits one phone screenshot.
+4. [x] The owner can link a person on the bill to a registered user by username or email. Names are never matched to accounts automatically. An invitation stays pending until the invitee accepts or declines it, and accepting, declining, cancelling or unlinking never changes any share.
+5. [x] A linked participant can view the bill. Pending, declined, cancelled and unlinked invitees, and accounts whose person was removed from the bill, can't.
+6. [x] The owner can add, edit and delete items and people, and assign each item to one or more people on the bill.
+7. [x] An item assigned to one person is charged fully to them. An item assigned to several is split equally.
+8. [x] The bill total and every person's share reconcile exactly after rounding (including uneven paisa).
+9. [x] A new bill containing the same item doesn't change the price stored in an older bill.
+10. [x] Users can search and filter saved bills and reopen accessible ones.
+11. [x] Users can view item price observations from accessible bills and see price changes between comparable entries. Different variants or units aren't compared.
+12. [x] Price history never reveals records from unrelated users' bills.
+13. [x] Editing or deleting a bill affects only that bill and its own history and access records.
+14. [x] The interface works on mobile and desktop with clear validation, empty, loading and error states.
+15. [x] Authorization is enforced by Convex functions, verified by the automated permission-matrix tests and by direct requests.
+16. [x] Bills and price records persist across sessions. `npm run check` passes. No hard-coded style values or out-of-folder SDK imports (lint passes).

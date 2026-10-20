@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Printer, Trash2 } from "lucide-react";
 
 import { useAccount } from "@/components/layout/account-gate";
 import { useResetAfterLeave } from "@/components/layout/use-reset-after-leave";
@@ -65,26 +65,32 @@ function TripDetail({ tripId, onDeleted }: { tripId: string; onDeleted: () => vo
   return (
     <div className="flex flex-col gap-24">
       <div className="flex flex-col gap-12">
-        {isOwner && (
-          <div className="flex justify-end gap-8">
-            <Button asChild variant="secondary">
-              <Link href={`/trips/${trip.id}/edit`}>
-                <Pencil aria-hidden className="size-icon-md" />
-                Edit
-              </Link>
-            </Button>
-            <Button
-              variant="danger-soft"
-              onClick={() => {
-                setDeleteError(null);
-                setConfirmOpen(true);
-              }}
-            >
-              <Trash2 aria-hidden className="size-icon-md" />
-              Delete
-            </Button>
-          </div>
-        )}
+        <div data-print="hide" className="flex justify-end gap-8">
+          <Button variant="secondary" onClick={() => window.print()}>
+            <Printer aria-hidden className="size-icon-md" />
+            Print
+          </Button>
+          {isOwner && (
+            <>
+              <Button asChild variant="secondary">
+                <Link href={`/trips/${trip.id}/edit`}>
+                  <Pencil aria-hidden className="size-icon-md" />
+                  Edit
+                </Link>
+              </Button>
+              <Button
+                variant="danger-soft"
+                onClick={() => {
+                  setDeleteError(null);
+                  setConfirmOpen(true);
+                }}
+              >
+                <Trash2 aria-hidden className="size-icon-md" />
+                Delete
+              </Button>
+            </>
+          )}
+        </div>
         <SplitSummary
           title={trip.title}
           meta={tripMetaLine(trip.storeName, trip.tripDate)}
@@ -106,7 +112,10 @@ function TripDetail({ tripId, onDeleted }: { tripId: string; onDeleted: () => vo
           reconciled={trip.reconciled}
         />
       </div>
-      <PeopleList tripId={trip.id} people={trip.people} isOwner={isOwner} />
+      {/* Link states and invite actions don't belong on paper; the summary above names everyone. */}
+      <div data-print="hide">
+        <PeopleList tripId={trip.id} people={trip.people} isOwner={isOwner} />
+      </div>
       <TripSummary bill={billViewFromDetail(trip)} />
 
       {isOwner && (

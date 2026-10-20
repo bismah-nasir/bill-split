@@ -29,7 +29,8 @@ export function ParticipantShares({ shares, reconciled }: ParticipantSharesProps
           <ShareRow key={share.key} share={share} />
         ))}
       </Card>
-      <ReconciliationBadge reconciled={reconciled} />
+      {/* The split summary at the top of a saved bill already says it on paper. */}
+      <ReconciliationBadge reconciled={reconciled} hideInPrint />
     </section>
   );
 }
@@ -54,46 +55,53 @@ function ShareRow({ share }: { share: BillViewShare }) {
           <MoneyText paisa={share.totalPaisa} className="font-semibold" />
           <ChevronDown
             aria-hidden
+            data-print="hide"
             className={cn("size-icon-md text-ink-secondary", isOpen && "rotate-180")}
           />
         </span>
       </button>
-      {isOpen && (
-        <ul id={listId} className="flex flex-col gap-6 px-16 pb-12">
-          {share.items.length === 0 && (
-            <li className="type-body-sm text-ink-muted">No items</li>
-          )}
-          {share.items.map((item) => (
-            <li key={item.key} className="flex items-baseline justify-between gap-12 type-body-sm">
-              <span className="min-w-0 break-words text-ink-secondary">
-                {item.name}
-                {item.splitCount > 1 && (
-                  <span className="text-ink-muted">
-                    {" "}
-                    (1/{item.splitCount} of {formatPaisa(item.lineTotalPaisa)})
-                  </span>
-                )}
-              </span>
-              <MoneyText paisa={item.amountPaisa} size="sm" />
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* Always rendered, so a printed bill shows every share's items. */}
+      <ul id={listId} className={cn("flex flex-col gap-6 px-16 pb-12", !isOpen && "hidden print:flex")}>
+        {share.items.length === 0 && (
+          <li className="type-body-sm text-ink-muted">No items</li>
+        )}
+        {share.items.map((item) => (
+          <li key={item.key} className="flex items-baseline justify-between gap-12 type-body-sm">
+            <span className="min-w-0 break-words text-ink-secondary">
+              {item.name}
+              {item.splitCount > 1 && (
+                <span className="text-ink-muted">
+                  {" "}
+                  (1/{item.splitCount} of {formatPaisa(item.lineTotalPaisa)})
+                </span>
+              )}
+            </span>
+            <MoneyText paisa={item.amountPaisa} size="sm" />
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
-export function ReconciliationBadge({ reconciled }: { reconciled: boolean }) {
+type ReconciliationBadgeProps = {
+  reconciled: boolean;
+  /** Leaves it off a printed page where another copy already says it. */
+  hideInPrint?: boolean;
+};
+
+export function ReconciliationBadge({ reconciled, hideInPrint = false }: ReconciliationBadgeProps) {
+  const print = hideInPrint ? "hide" : undefined;
   if (reconciled) {
     return (
-      <Badge variant="success" className="self-start">
+      <Badge variant="success" data-print={print} className="self-start">
         <CircleCheck aria-hidden className="size-icon-sm" />
         Shares add up to the bill total
       </Badge>
     );
   }
   return (
-    <Badge variant="error" role="alert" className="self-start">
+    <Badge variant="error" role="alert" data-print={print} className="self-start">
       <CircleAlert aria-hidden className="size-icon-sm" />
       Shares don&apos;t add up to the bill total
     </Badge>

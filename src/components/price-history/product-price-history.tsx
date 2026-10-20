@@ -9,6 +9,7 @@ import { LoadingState } from "@/components/ui/loading-state";
 import { productDetailsLine } from "@/domain/price-history";
 import { usePriceObservations } from "@/lib/db/price-history";
 
+import { PriceChart } from "./price-chart";
 import { PriceHistoryList } from "./price-history-list";
 import { ProductList, productSummaryLine } from "./product-search";
 
@@ -77,6 +78,7 @@ export function ProductPriceHistory({ productMatchKey, onSelect, onBack }: Produ
         </div>
       </div>
 
+      <PriceChart observations={observations} />
       <PriceHistoryList observations={observations} />
 
       {otherVariants.length > 0 && (

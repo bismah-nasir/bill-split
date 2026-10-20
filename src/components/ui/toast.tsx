@@ -38,6 +38,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <div
         role="status"
         aria-live="polite"
+        data-print="hide"
         className="pointer-events-none fixed inset-x-0 bottom-tab-bar z-30 px-16 pb-16 md:bottom-0 md:pb-24"
       >
         {toast && (

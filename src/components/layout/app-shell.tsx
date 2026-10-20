@@ -14,7 +14,7 @@ import { UserMenu } from "./user-menu";
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-20 border-b border-line bg-surface">
+      <header data-print="hide" className="sticky top-0 z-20 border-b border-line bg-surface">
         <PageContainer className="flex items-center gap-16 py-8">
           <Link href="/dashboard" className="type-h3 text-primary">
             BillSplit
@@ -36,6 +36,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <nav
         aria-label="Main"
+        data-print="hide"
         className="fixed inset-x-0 bottom-0 z-20 flex h-tab-bar border-t border-line bg-surface shadow-raised md:hidden"
       >
         {NAV_ITEMS.map((item) => (
