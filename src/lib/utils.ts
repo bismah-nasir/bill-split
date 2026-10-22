@@ -11,7 +11,6 @@ export const cn = createCn({
       "type-style": [
         {
           type: [
-            "display",
             "display-sm",
             "h1",
             "h2",
@@ -20,11 +19,9 @@ export const cn = createCn({
             "body-medium",
             "body-sm",
             "caption",
-            "overline",
             "button",
             "button-sm",
             "numeric",
-            "numeric-lg",
           ],
         },
       ],

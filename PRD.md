@@ -1,13 +1,15 @@
 # Product Requirements Document (PRD)
 
 ## Product Name
-**BillSplit & Price History** *(working title)*
+**BillSplit & Price History**
+
+*Last aligned with the built product: 2026-10-22. Live at https://the-bill-split.vercel.app.*
 
 ## 1. Product Overview
 
 BillSplit & Price History is a private, account-based web application for recording shopping and restaurant bills, fairly splitting item costs among the people who shared a trip, keeping searchable bill history, and comparing item prices over time.
 
-Every shopping or ordering event is saved as its own independent bill/trip. A user can create a bill for a solo trip or invite friends who already have accounts to participate in a shared trip. Only the trip owner and participants whose invitations have been accepted can access a shared trip. A solo trip remains private to its owner.
+Every shopping or ordering event is saved as its own independent bill/trip. The owner adds the people a bill is split between by typing their names; those people do not need accounts. Optionally, the owner can link a person on the bill to a registered account by username or email; once that account holder accepts, they can view the bill read-only. Only the owner and linked accounts can access a bill. A bill nobody is linked to remains private to its owner.
 
 Users enter item prices as shown on the bill. The application assigns each item to one person or shares it equally among selected people, then calculates each participant's total. Item prices are assumed to already include any applicable tax. The first version will not calculate or distribute separate taxes, service charges, delivery fees, discounts, tips, or other additional charges.
 
@@ -48,7 +50,7 @@ The MVP will not include:
 A user goes grocery shopping alone, creates a bill, records the items and prices, and saves it. That bill is visible only to that user unless they explicitly share it in a future supported flow.
 
 ### 5.2 Friends shopping together
-Bismah and Maryam shop at Imtiaz. Bismah creates a trip, adds Maryam as a participant, and records each item with its price and owner. Some items are assigned to Bismah, some to Maryam, and some are shared equally. After Maryam accepts the invitation, both can view the trip and its complete item breakdown. Neither can see the other person's unrelated private trips.
+Bismah and Maryam shop at Imtiaz. Bismah creates a bill, adds Maryam by typing her name, and records each item with its price and who pays for it. Some items are assigned to Bismah, some to Maryam, and some are shared equally. Bismah can send Maryam a screenshot of the split summary straight away. If Maryam has an account, Bismah can also link "Maryam" on the bill to Maryam's username or email; after Maryam accepts, she can view the bill and its complete item breakdown. Linking never changes the split. Neither can see the other person's unrelated private bills.
 
 ### 5.3 Restaurant order
 A user records the final cost of each item as listed on the receipt. A shared item, such as a pizza, is divided equally among the people selected for that item. An item ordered by one person is assigned entirely to that person. Separate tax or fee lines are outside the MVP scope.
@@ -60,10 +62,12 @@ A user wants to know whether cooking oil or another grocery item costs more than
 
 - **User:** A person with an authenticated account.
 - **Trip / Bill:** One independent shopping, grocery, restaurant, or other purchase event. Each trip contains one bill and is stored separately.
-- **Owner / Creator:** The user who creates a trip and manages its contents and invitations.
-- **Participant:** A user invited to a trip who has accepted the invitation.
+- **Owner / Creator:** The user who creates a trip and manages its contents, people and invitations.
+- **Person (on a bill):** Someone the bill is split between: the owner, or a name the owner typed. A person does not need an account.
+- **Linked person / Participant:** A person on a bill who has been linked to a registered account, after that account holder accepted an invitation. Participants can view the bill read-only.
+- **Invitation:** A request from the owner to link one person on one bill to one account. It can be pending, accepted, declined, cancelled or unlinked.
 - **Item:** A purchased product or order line recorded on a bill.
-- **Assigned participants:** The one or more participants responsible for an item's cost.
+- **Assigned people:** The one or more people on the bill responsible for an item's cost.
 - **Price-history entry:** The item price recorded on a particular saved bill, retained as a dated historical observation.
 
 ## 7. Functional Requirements
@@ -73,7 +77,7 @@ A user wants to know whether cooking oil or another grocery item costs more than
 - Users must sign in to view any bill or price history.
 - Users sign up with **Name, Email, Password and Confirm password**, and sign in with email and password.
 - Each email address can belong to only one account. Passwords must be at least 8 characters, and Confirm password must match Password.
-- After signing up, a user chooses a unique username. Friends can find them by username or email.
+- After signing up, a user chooses a unique username (onboarding). A bill's owner can link a person on the bill to their account by username or email.
 - Users can view and edit their name and username, and see their email.
 - Users must be able to sign out.
 - The application must never expose a user's private trips to unrelated users. Do not build public or anonymous bill access.
@@ -83,10 +87,10 @@ A user wants to know whether cooking oil or another grocery item costs more than
 The dashboard should show:
 
 - A clear action to create a new trip/bill.
-- Recent trips the user owns or can access as an accepted participant.
-- Basic details per trip: trip title, store, date, category, total bill amount, and participant names.
-- A simple personal spending summary for a selected period may be included if it can be calculated reliably from accessible bill records. It must be clear whether the number represents bills created by the user or the user's allocated shares; do not mix these meanings.
-- Links to Bill History and Price History.
+- Recent bills (the newest 5) the user owns or can access as a linked participant.
+- Basic details per bill: title, store, date, category, ownership (owned or shared), total bill amount, and the names of the people on it.
+- A monthly spending summary with a month switcher and two separate figures that are never mixed: **Your share** (the sum of the user's own allocated shares across every bill they can access, dated in that month) and **Bills you created** (the full totals of bills the user owns, dated in that month).
+- Links to Bill History ("View all bills") and Price History ("Compare prices").
 
 The dashboard must not show the contents, names, or totals of unrelated users' bills.
 
@@ -95,11 +99,11 @@ The dashboard must not show the contents, names, or totals of unrelated users' b
 The owner must be able to create a new independent bill with:
 
 - **Trip title:** Required (for example, “Imtiaz Grocery Shopping” or “Dinner”).
-- **Store / merchant:** Required or optional according to the final UI decision; if omitted, the title still identifies the trip.
-- **Date:** Defaults to the current date in the user's local timezone and can be changed.
-- **Category:** At minimum Grocery, Restaurant, Shopping, and Other. The user can choose Other if no category fits.
-- **Participants:** The owner is included automatically. The owner may invite one or more existing users.
-- **Items:** One or more item rows, each with a name, price, quantity, optional unit/variant details, and assigned participant(s).
+- **Store / merchant:** Optional; if omitted, the title still identifies the trip.
+- **Date:** Defaults to the current date in the user's local timezone and can be changed (at most one year in the future).
+- **Category:** Grocery (the default), Restaurant, Shopping, and Other.
+- **People:** The owner is included automatically. The owner adds anyone else by typing a name (1–40 characters, unique on the bill ignoring case; at most 20 people including the owner). No account is needed. Linking a person to an account happens after saving (see 7.7).
+- **Items:** One or more item rows (at most 200), each with a name, price, quantity, optional brand/variant/pack size/unit, and the assigned people.
 
 A trip is a single bill, not a container for multiple separate receipts. Users who make multiple purchases should create separate trips for each bill.
 
@@ -109,11 +113,11 @@ Each item should support these fields:
 
 - **Item name:** Required (for example, “Cooking Oil”).
 - **Brand / variant / pack size:** Optional, to distinguish similar products (for example, brand or “1 litre”).
-- **Quantity:** Defaults to 1 and must be greater than 0.
+- **Quantity:** Defaults to 1 and must be greater than 0. Up to three decimal places are allowed (for example 1.5 kg).
 - **Unit:** Optional (for example, item, kg, litre, pack). This helps distinguish comparable prices when relevant.
-- **Unit price:** Required, non-negative monetary amount in PKR. The entered price is the final per-unit price to use for the split and is assumed to include applicable tax.
-- **Line total:** Calculated as quantity × unit price. It should be visible to the owner when editing the bill.
-- **Assigned participants:** At least one participant must be selected. One selected participant pays the entire line total; multiple selected participants share the line total equally.
+- **Unit price:** Required, non-negative monetary amount in PKR (zero is allowed). The entered price is the final per-unit price to use for the split and is assumed to include applicable tax.
+- **Line total:** Calculated as quantity × unit price, shown live while the owner edits the bill, with the running bill total in a sticky footer.
+- **Assigned people:** At least one person must be selected (chips for each person, plus **Everyone**). One selected person pays the entire line total; multiple selected people share the line total equally. A preview under the item shows each person's part.
 
 The owner must be able to add, edit, and remove items before saving and when editing a saved trip. The UI should make each item's name, price, and assigned people easy to scan. Saving must be blocked if a required field is invalid or an item has no assigned participant.
 
@@ -121,49 +125,52 @@ If the user prefers to enter a single final item total instead of a unit price f
 
 ### 7.5 Bill-Splitting Rules
 
-1. The owner is always a participant in the trip.
-2. Each item must be assigned to one or more participants in that trip.
-3. If one participant is assigned to an item, that participant is responsible for the full line total.
-4. If multiple participants are assigned to an item, divide that line total equally among those participants.
-5. Do not split an item with people who are not participants in the trip.
+1. The owner is always a person on the bill.
+2. Each item must be assigned to one or more people on that bill.
+3. If one person is assigned to an item, that person is responsible for the full line total.
+4. If multiple people are assigned to an item, divide that line total equally among them.
+5. Do not split an item with people who are not on the bill.
 6. The amount assigned to each person is the sum of that person's shares across all items.
 7. The trip total is the sum of all item line totals.
-8. The sum of all participant shares must equal the trip total exactly after rounding.
-9. All calculations must use decimal-safe monetary arithmetic (such as integer paisa internally), not imprecise binary floating-point arithmetic.
-10. Display monetary totals consistently to two decimal places. Where a line total cannot be divided evenly to the nearest paisa, distribute any remaining paisa deterministically so that the allocated shares still add up exactly to the line total. The allocation rule must be consistent and documented in code.
+8. The sum of all people's shares must equal the trip total exactly after rounding.
+9. All calculations use integer paisa (and integer thousandths for quantities), never binary floating-point arithmetic.
+10. Display monetary totals consistently to two decimal places. A line total is quantity × unit price rounded half-up to the nearest paisa. Where a line total cannot be divided evenly, the remaining paisa go one each to the assigned people earliest on the bill: the owner first, then people in the order they were added. Each person's position on the bill never changes, so renaming, linking or unlinking someone never moves a paisa.
 11. Editing or creating one trip must never overwrite the item price or totals stored in another trip.
+12. Linking, unlinking, declining or cancelling an invitation never changes the split.
 
-**Example:** A Rs. 5,000 pizza assigned equally to three participants produces shares of Rs. 1,666.67, Rs. 1,666.67, and Rs. 1,666.66 (or another deterministic one-paisa allocation), for an exact total of Rs. 5,000. An additional Rs. 900 item assigned only to Maryam adds Rs. 900 to Maryam's amount and does not affect the other participants.
+**Example:** A Rs. 5,000 pizza assigned equally to three people produces shares of Rs. 1,666.67, Rs. 1,666.67, and Rs. 1,666.66, for an exact total of Rs. 5,000. An additional Rs. 900 item assigned only to Maryam adds Rs. 900 to Maryam's amount and does not affect the other people.
 
 ### 7.6 Trip Summary
 
-After entering items, the owner should be able to review a summary before saving. It should show:
+After entering items, the owner reviews a summary (**Review**) before saving. It shows:
 
-- Trip title, store, date, category, and participants.
-- All item names, quantities, unit prices, line totals, and assigned participants.
+- Trip title, store, date, category, and the people on the bill.
+- All item names, quantities, unit prices, line totals, and assigned people.
 - Total bill amount.
-- Each participant's share, with a clear breakdown of which items contribute to that share.
-- A validation indicator confirming that participant shares add up to the total bill amount.
+- Each person's share, with a clear breakdown of which items contribute to that share (for example "Pizza (1/3 of Rs. 5,000.00)").
+- A validation indicator confirming that the shares add up to the total bill amount.
 
-The saved trip detail page should show the same information to authorized participants. A participant should be able to understand why their total is what it is without recalculating manually.
+The saved bill page shows the same information to the owner and linked participants. It opens with a **split summary** card (title, store, date, total, one line per person, and the reconciliation check) sized to fit one phone screenshot, so the owner can send it in any chat app. The split summary never says "You", because it is forwarded to others. A participant should be able to understand why their total is what it is without recalculating manually.
 
-### 7.7 Inviting Friends and Trip Access
+The owner and linked participants can **print** a bill. The printout fits the page's content only (no navigation or management actions) and includes every person's breakdown.
 
-Users may invite friends who already have accounts using their username or registered email address.
+### 7.7 Linking People to Accounts and Trip Access
 
-- The owner selects an identifier and the person to invite.
-- The application must resolve the identifier to an existing account without exposing unnecessary profile or contact information.
-- The invitation must be tied to one specific trip.
-- The invited user sees a pending invitation and can accept or decline it.
-- The invited user gains access to that trip only after accepting.
-- A pending or declined invitation must not grant access to the trip.
-- The owner can see pending, accepted, and declined invitation states.
-- The owner can cancel a pending invitation and remove a participant from a trip, with a clear confirmation when access will be revoked.
-- Removing a participant prevents future access to the trip. The user's other trips remain unaffected.
+Splitting never depends on accounts. Separately, the owner may give a person on the bill read-only access by linking them to a registered account, using that account's username or registered email address.
+
+- The owner chooses a person already on the bill (or adds a new one in the same step) and enters a username or email.
+- The application resolves the identifier with an exact, case-insensitive match and shows only the matched username. A failed lookup gives one generic message.
+- Names are never matched to accounts automatically, even if someone signs up with the same name. Only the owner links a person, and the account holder must accept.
+- The invitation is tied to one specific person on one specific bill. A person can have at most one pending invitation, and an account can be linked to at most one person per bill. Inviting yourself is rejected.
+- The invited user sees the pending invitation on **Invitations → Received** (with a count badge in the navigation) and can accept or decline it. They see only the bill's title, store, date, the owner's username and the name they would be linked as.
+- The invited user gains access to that bill only after accepting. A pending, declined or cancelled invitation grants no access.
+- The owner sees each person's link state on the bill (not linked, invited, declined, linked) and all sent invitations on **Invitations → Sent**.
+- The owner can cancel a pending invitation, and can **unlink** a linked person, with a confirmation when access will be revoked. Declining, cancelling and unlinking leave the person on the bill as a plain name, with their share unchanged.
+- Once linked, the person is shown as "Ben (@ben_doe)": the name the owner typed plus the username. The account's own name is never shown.
+- Removing a person from the bill (an edit) also revokes any access they had. The user's other bills remain unaffected.
 - In-app invitation status is required. The app does not send email or SMS notifications, and must never claim that one was sent.
-- Username and email lookups must not reveal more account information than is necessary to complete the invitation.
 
-**MVP permission model:** The trip owner can create, edit, and delete the trip, its items, and its participant list. Accepted participants can view the trip and its item/share breakdown but cannot edit or delete it. This keeps the first version simple and prevents conflicting edits. Shared editing can be considered later.
+**MVP permission model:** The trip owner can create, edit, and delete the trip, its items, its people and their links. Linked participants can view and print the bill and its item/share breakdown but cannot edit or delete it. This keeps the first version simple and prevents conflicting edits. Shared editing can be considered later.
 
 ### 7.8 Bill History
 
@@ -171,9 +178,10 @@ Users must be able to browse all trips they own and all trips shared with them t
 
 Bill History should support:
 
-- Search by trip title, store, and item name where practical.
-- Filters for date range, category, and owned/shared status.
-- Sorting by newest/oldest date and bill total.
+- Search by trip title, store, and item name.
+- Filters for date range, category, and owned/shared status ("All", "Created by me", "Shared with me"). Search and filters are kept in the URL, so they survive reload and back navigation.
+- Sorting by newest/oldest date and highest/lowest bill total.
+- A match count and a "Load more" button (20 bills at a time).
 - Opening a saved trip to review its full item list and participant shares.
 - A visible distinction between trips created by the user and trips shared with the user.
 - Empty states that explain how to create the first bill or what to do when no search results match.
@@ -184,20 +192,21 @@ The history list and search results must enforce the same access permissions as 
 
 The purpose of price history is to help users see how recorded item prices change over time.
 
-- Users can search for an item by name and select a matching product/variant.
-- When entering an item, the app should suggest previously used matching item names where feasible, so the user can consistently record the same product over time.
-- Matching should consider normalized item name and, where supplied, brand, variant, pack size, and unit. For example, cooking oil in a 1-litre bottle should not automatically be treated as identical to a 5-litre container.
-- Do not merge different products automatically when the match is ambiguous. Allow the user to select an existing match or record a distinct item/variant.
-- Show historical observations with date, item/variant, recorded unit price, quantity/unit, store, trip title, and link to the source bill if the user still has access to it.
-- Where comparable entries exist, show the previous recorded price, difference in rupees, and percentage change. Positive values indicate an increase; negative values indicate a decrease; an unchanged price should be shown as unchanged.
-- A simple price-over-time chart is optional; a readable chronological table/list is sufficient for the MVP.
+- Users can search for an item by name (at least 2 characters) and select a matching product/variant.
+- When entering an item on a new bill, the app suggests previously recorded products with their brand, pack size and last price. Choosing a suggestion fills in all the product fields, so the item lands in the same Price History product; **Use as new item** keeps what the user typed.
+- Matching uses the normalized item name and, where supplied, brand, variant, pack size, and unit. For example, cooking oil in a 1-litre bottle is not treated as identical to a 5-litre container.
+- Do not merge different products automatically when the match is ambiguous. The user selects an existing match or records a distinct item/variant.
+- Show historical observations, newest first, with date, recorded unit price, change, quantity/unit, store, and a link to the source bill (a table on desktop, cards on phones).
+- Show the change from the previous record of the same product in rupees and percent. Positive values indicate an increase; negative values indicate a decrease; an unchanged price is shown as unchanged; the oldest record is marked "First record".
+- With two or more records, a **price-over-time chart** shows the unit price by date, with the lowest and highest price labelled and a text alternative for screen readers.
 - Price history must be derived from saved bill item records, not from one mutable “current price” field that overwrites previous prices.
 - The price-history view must only include records from trips the current user owns or is authorized to access. It must not expose product purchase history from unrelated accounts.
 - If quantity/unit/pack size differs, make the difference visible and do not present the prices as directly comparable unless the units can be normalized reliably.
 
 ### 7.10 Editing and Deleting Saved Trips
 
-- The owner can edit trip details and items after saving.
+- The owner can edit trip details, people and items after saving. Removing a person moves items only they paid for to the owner and drops them from shared items. Renaming a person never changes any amount.
+- Leaving an edited form with unsaved changes asks for confirmation (**Cancel** asks "Discard changes?", and closing or reloading the tab warns).
 - Changes to an existing bill update that bill's own data and its associated price-history observation. They must not affect any other bill.
 - The owner can delete a trip after a confirmation step. Deletion revokes participant access and removes that trip from price-history calculations. The implementation should use a consistent deletion strategy and avoid leaving orphaned participant access records.
 - Participants cannot edit or delete trips in the MVP.
@@ -209,22 +218,20 @@ The purpose of price history is to help users see how recorded item prices chang
 1. User signs in.
 2. User selects Create Trip.
 3. User enters trip title, store, date, and category.
-4. The owner is added as the only participant.
-5. User adds items, their prices/quantities, and assigns each item to themselves.
-6. App calculates totals and displays the summary.
+4. The owner is the only person on the bill.
+5. User adds items, their prices/quantities; every item is paid by the owner ("Paid by you").
+6. App calculates totals and displays the review.
 7. User saves the trip.
 8. Trip appears in the owner's dashboard and Bill History only.
 
-### Flow B: Create and share a bill
+### Flow B: Split a bill and optionally share it
 1. User signs in and creates a trip.
-2. User invites one or more friends by their username or registered email.
-3. The app records each invitation as pending.
-4. Each friend accepts or declines from their account.
-5. After acceptance, the friend can view the trip and its full breakdown.
-6. The owner assigns items to one participant or multiple participants and saves the bill.
-7. The owner and accepted participants can reopen the trip later; unrelated users cannot access it.
-
-The UI may allow the owner to prepare the bill before invitations are accepted, but pending invitees must not gain access until they accept.
+2. User adds the other people by typing their names (no accounts needed).
+3. User assigns each item to one person, several people, or everyone; the app previews each share live.
+4. User reviews and saves. The bill page opens with the split summary, ready to screenshot and send.
+5. Optionally, for a person who has an account, the owner invites that account by username or email to link it to the person. The invitation is pending.
+6. The account holder accepts or declines from their Invitations page.
+7. After acceptance, they can view the bill and its full breakdown, and it appears in their dashboard and Bill History as shared. Unrelated users, and pending, declined, cancelled or unlinked invitees, cannot access it.
 
 ### Flow C: Review old bills
 1. User opens Bill History.
@@ -239,14 +246,17 @@ The UI may allow the owner to prepare the bill before invitations are accepted, 
 
 ## 9. Main Screens
 
-1. **Sign Up / Sign In** — sign up with name, email, password and confirm password; sign in with email and password; then choose a username.
-2. **Dashboard** — create-trip action, recent accessible trips, and clearly defined summary figures.
-3. **Create / Edit Trip** — trip details, participant invitations, item-entry list, assignments, and calculated totals.
-4. **Trip Details** — saved items, participants, bill total, each person's share, and invitation/access status for the owner.
-5. **Invitations** — received pending invitations and sent invitation statuses, with accept/decline/cancel actions as appropriate.
-6. **Bill History** — searchable and filterable list of owned and shared trips.
-7. **Price History** — product search and dated price observations with change comparisons.
-8. **Profile / Account Settings** — name and username (editable) and email (read-only).
+1. **Landing** — what the app does, with Get started and Sign in.
+2. **Sign Up / Sign In / Onboarding** — sign up with name, email, password and confirm password; sign in with email and password; then choose a username.
+3. **Dashboard** — New bill action, monthly spending summary, recent accessible bills, and a Compare prices link.
+4. **New / Edit Bill** — details, people, item-entry list with assignments and live totals, then Review before saving.
+5. **Bill Details** — split summary, people with their link states and invite actions (owner), items, total, each person's share, and Print / Edit / Delete.
+6. **Invitations** — Received (pending, with accept/decline) and Sent (statuses, with cancel).
+7. **Bills (Bill History)** — searchable and filterable list of owned and shared bills.
+8. **Prices (Price History)** — product search, price chart and dated price observations with change comparisons.
+9. **Settings** — name and username (editable), email (read-only), and Sign out.
+
+On phones the app uses a bottom tab bar (Home, Bills, Prices, Invites); on larger screens the same links sit in the header.
 
 Use a responsive, accessible interface with clear forms, readable totals, helpful validation, and useful empty/loading/error states. Avoid making users navigate through unnecessary steps to add items or see the split.
 
@@ -273,15 +283,23 @@ The final database design may change, but it must support the following logical 
 - `createdAt`, `updatedAt`
 - Derived total from item line totals, or a stored total that is transactionally kept consistent with items
 
-### Trip Participant / Invitation
+### Person on a Trip
 - `id`
 - `tripId` → Trip
-- `userId` → User, when the identifier is resolved to an account
-- `invitedIdentifierType` and `invitedIdentifier` only if needed for invitation workflow; minimize retention of unnecessary contact data
-- `status` (pending, accepted, declined, cancelled, or removed as appropriate)
-- `invitedByUserId` → User
-- `createdAt`, `respondedAt`
-- Enforce a unique active participant/invitation relationship per trip and user.
+- `role` (owner or person)
+- `name` (typed by the owner; absent on the owner's row) and a normalized form, unique per trip
+- `position` (owner 0, then in the order added; never changes; decides remainder paisa)
+- `userId` → User, only for the owner and for linked people
+- `linkedAt`, `createdAt`, `updatedAt`
+
+### Invitation (link request)
+- `id`
+- `tripId` → Trip, `personId` → Person on a Trip
+- `inviteeUserId` → User, `invitedByUserId` → User
+- `invitedVia` (username or email); the identifier the owner typed is not stored
+- `status` (pending, accepted, declined, cancelled, unlinked)
+- `createdAt`, `respondedAt`, `updatedAt`
+- One record per trip and invitee account, reused on re-invite. At most one pending invitation per person.
 
 ### Bill Item
 - `id`
@@ -297,9 +315,9 @@ The final database design may change, but it must support the following logical 
 ### Item Assignment / Share
 - `id`
 - `itemId` → Bill Item
-- `userId` → Trip Participant/User
+- `personId` → Person on a Trip (not an account)
 - `allocatedAmount` (the exact monetary share for that item)
-- Enforce that an assigned user is an owner or accepted/eligible participant of the trip according to the trip's assignment policy.
+- Enforce that an assigned person belongs to the same trip.
 
 The database may calculate shares on demand or store share rows, but all saved/displayed totals must be consistent. If shares are stored, update them atomically with item changes. Historical price observations should be traceable to a bill item record and must respect bill access permissions.
 
@@ -309,11 +327,11 @@ Privacy is a core product requirement, not an optional enhancement.
 
 - Require authentication for every private application screen and data request.
 - Enforce authorization on the server/database for every trip, item, share, invitation, and price-history query. Client-side hiding alone is insufficient.
-- A trip is accessible to its owner and only those users with accepted participant status.
-- Pending, declined, cancelled, or removed participants must not access the trip.
+- A trip is accessible to its owner and only those accounts linked to a person on it (an accepted invitation).
+- Pending, declined, cancelled, unlinked or removed invitees must not access the trip. An inaccessible trip looks exactly like a missing one.
 - Verify authorization on read, create, update, and delete operations, including requests using guessed IDs or modified URLs.
-- Validate that all item assignments reference eligible participants in the same trip.
-- Do not expose users' email addresses or names to other users. Trip participants see each other's usernames only.
+- Validate that all item assignments reference people on the same trip.
+- Do not expose users' account names or email addresses to other users. Other viewers see the owner as "@username" and linked people as the owner's typed name plus their username ("Ben (@ben_doe)").
 - Store passwords only as secure hashes managed by the authentication system. Never log, store in app tables, or return a password.
 - Do not reveal another user's complete trip list, item catalogue, or item price history.
 - Protect authentication secrets and database credentials; never expose server-only secrets in frontend code.
@@ -324,9 +342,10 @@ Privacy is a core product requirement, not an optional enhancement.
 
 - Required fields must be validated before a trip can be saved.
 - Quantity must be greater than zero.
-- Unit price must be a valid non-negative monetary amount. If zero-price items are permitted, display them clearly; otherwise reject them consistently.
-- A bill item must have at least one eligible assigned participant.
-- Duplicate invitations to the same user for the same trip should be prevented or handled predictably.
+- Unit price must be a valid non-negative monetary amount (at most Rs. 10,000,000.00). Zero-price items are allowed.
+- A bill item must have at least one assigned person on the bill.
+- Two people on one bill cannot have the same name (ignoring case and spacing).
+- Duplicate invitations to the same account for the same trip are rejected with a clear message ("already invited" / "already on this bill"), including concurrent attempts.
 - Users must not be able to accept an invitation for another account.
 - Invalid or unauthorized requests must fail safely and must not reveal private record existence unnecessarily.
 - Network/server errors should preserve the user's unsaved form data where feasible and show a clear retry message.
@@ -338,10 +357,10 @@ The MVP is acceptable when all of the following work:
 
 1. A user can register with name, email, password and confirm password, sign in with email and password, and create a private bill.
 2. A private bill is visible to its owner and is not visible to an unrelated signed-in user.
-3. A user can create a trip with multiple participants by inviting registered users by username or email.
+3. A user can create a trip with multiple people by typing their names, and can link any of them to a registered account by username or email.
 4. An invitation remains pending until the invited user accepts or declines it.
-5. An accepted participant can view the associated trip; a pending, declined, cancelled, or removed invitee cannot.
-6. The owner can add, edit, and delete items and assign each item to one or more eligible participants.
+5. A linked participant can view the associated trip; a pending, declined, cancelled, unlinked or removed invitee cannot.
+6. The owner can add, edit, and delete items and assign each item to one or more people on the bill.
 7. An item assigned to one person is charged fully to that person; an item assigned to multiple people is split equally.
 8. The bill total and all participant shares reconcile exactly after currency rounding.
 9. A new bill for the same item does not change the price stored in an older bill.
@@ -362,7 +381,8 @@ At minimum, test the following scenarios:
 - A trip containing both personal and shared items.
 - A total that does not divide evenly into paisa, confirming shares still add up exactly.
 - Editing an item in one trip without changing another trip's record of the same item.
-- An owner, an accepted participant, a pending invitee, a declined invitee, a removed participant, and an unrelated user trying to access a trip.
+- An owner, a linked participant, a pending invitee, a declined invitee, a cancelled invitee, an unlinked participant, a removed person, an unrelated user and a signed-out visitor trying to access a trip.
+- Linking, unlinking and removing people without changing anyone's share.
 - Invitation by username and by email (both case-insensitive).
 - Sign-up validation: missing fields, invalid email, short password, mismatched confirm password, and an email that already has an account.
 - Duplicate invitations and invalid participant assignments.
@@ -376,26 +396,28 @@ At minimum, test the following scenarios:
 - Email-and-password authentication and account identity.
 - Private trips and owner-based access control.
 - Trip creation and item entry.
-- Item assignment and equal split calculation.
-- Accurate bill and participant totals.
-- Invitations, acceptance/decline, and shared read access.
+- People on a bill by name, item assignment and equal split calculation.
+- Accurate bill and per-person totals.
+- Linking people to accounts (invitations, accept/decline, cancel, unlink) and shared read access.
 - Saved Bill History.
 - Basic Item Price History from accessible saved bills.
 - Secure backend authorization and core tests.
 
+All P0 items are done and deployed.
+
 ### P1 — Useful improvements after the core flow works
-- Price-over-time chart.
-- More advanced history filters and spending summaries.
-- Convenient item suggestions and duplicate-name resolution.
-- Email notifications for invitations, if an email provider is configured.
-- Export/print a bill summary.
+- ✅ Price-over-time chart.
+- ✅ Advanced history filters and a monthly spending summary.
+- ✅ Item suggestions while entering items, with "Use as new item" for a distinct product.
+- ✅ Print a bill.
+- Not planned: email notifications for invitations. They conflict with the "the app never sends email" non-goal (§4) and would need an email provider.
 
 ### Explicitly out of scope until separately approved
 - Separate taxes and extra charges, custom/unequal item splits, payments/settlements, receipt OCR, public sharing, and shared editing by participants.
 
 ## 16. Product Decisions and Implementation Notes
 
-- Use the terms “Trip” and “Bill” consistently in the interface. A trip represents one bill only.
+- The interface says “bill” everywhere (New bill, Bills, Edit bill). “Trip” remains the internal name in code and in this document; a trip represents one bill only.
 - Use PKR and display values as `Rs. 1,234.56` or an equally clear consistent format.
 - Store dates consistently and display them in the user's intended local timezone. Default to Pakistan time where appropriate, but do not convert a date-only shopping record into a different date through timezone handling.
 - Preserve each saved bill item as a historical observation. Never keep only the latest price.
@@ -433,7 +455,7 @@ Do not add PostgreSQL, Prisma, a separate Express server, Redux, Redis, a messag
 
 Use the Next.js **App Router** with TypeScript.
 
-- **Server Components by default:** Use them for route layouts, static page structure, and content that does not need browser interaction.
+- **Server Components by default:** Use them for route layouts, static page structure, and content that does not need browser interaction (for example the landing page). The signed-in app pages are client-rendered views that read live data through Convex's reactive queries.
 - **Client Components where needed:** Use them for Convex reactive queries, item-entry forms, participant selection, invitation actions, live bill totals, filters, dialogs, and other interactive controls.
 - **Provider setup:** Wrap the application with Convex Auth's Next.js providers, following the current official Convex Auth setup for Next.js. Use one shared Convex client instance.
 - **Authentication UI:** Build the sign-up form (Name, Email, Password, Confirm password) and sign-in form (Email, Password) from the app's own components. Password hashing and sessions are handled by Convex Auth; never implement them yourself.
@@ -458,9 +480,9 @@ Every public query and mutation must derive the signed-in user from the Convex A
 Create a small authorization helper such as `requireCurrentUser(ctx)` and reusable checks such as `requireTripViewer(ctx, tripId)` and `requireTripOwner(ctx, tripId)`. The authorization rules are:
 
 1. The owner can read and manage their own trip.
-2. A user with an **accepted** participant record can read that specific trip.
-3. Pending, declined, cancelled, and removed invitees cannot read the trip or its item/price-history data.
-4. Only the owner can change or delete a trip, its items, assignments, or participant list in the MVP.
+2. A user whose account is **linked** to a person on the trip (an accepted invitation) can read that specific trip.
+3. Pending, declined, cancelled, unlinked and removed invitees cannot read the trip or its item/price-history data.
+4. Only the owner can change or delete a trip, its items, assignments, people or links in the MVP.
 5. Every path that reads a trip's items or a price-history record must enforce the same access rules, including requests using a guessed ID.
 
 A mutation that changes a trip's items should validate participants and assignments, calculate line totals and allocations, and write the consistent result atomically. Prefer Convex mutations' transaction behavior over multiple independent writes that could leave a partial bill.
@@ -471,7 +493,7 @@ Convex Auth is the source of truth for authentication. Its Password provider cre
 
 Validate sign-up input on the server as well as in the form: name 1–60 characters, valid email, password 8–128 characters. Confirm password is checked in the form only and never sent to the server. A failed sign-in returns one generic message that doesn't reveal whether the account exists. Keep Convex Auth's limit on failed sign-in attempts enabled.
 
-For an invitation, normalize the supplied username or email, perform an exact indexed lookup, create an invitation tied to the resolved user and one trip, and return only the invitee's username. Prevent duplicates and avoid exposing a complete user directory. Emails aren't verified, so the inviter always sees the matched username and can cancel an invitation sent to the wrong person.
+For an invitation, normalize the supplied username or email, perform an exact indexed lookup, create an invitation tied to the resolved user and one person on one trip, and return only the invitee's username. Prevent duplicates and avoid exposing a complete user directory. Emails aren't verified, so the inviter always sees the matched username and can cancel an invitation sent to the wrong person.
 
 ### 18.4 Data Storage and Schema Design
 
@@ -482,16 +504,17 @@ Recommended tables:
 | Table | Main fields | Purpose |
 |---|---|---|
 | `users` | `name`, `email` (normalized), `username`, `usernameNormalized`, plus the optional fields Convex Auth requires | App profile and exact invitation lookup. Created by Convex Auth at sign-up. Store only necessary account data. |
-| `trips` | `ownerId`, `title`, `storeName`, `tripDate`, `category`, `currency`, `createdAt`, `updatedAt` | One independent bill per trip. Store `tripDate` as a date-only value such as `YYYY-MM-DD` to preserve the shopping date; use timestamps for audit fields. |
-| `tripParticipants` | `tripId`, `userId`, `role`, `status`, `invitedByUserId`, `createdAt`, `respondedAt` | Owner/participant relationship and pending/accepted/declined/cancelled/removed invitation state. The owner is always included as an accepted participant or otherwise receives equivalent explicit authorization. |
-| `items` | `tripId`, `name`, `normalizedName`, `brand`, `variant`, `packSize`, `unit`, `productMatchKey`, `quantity`, `unitPricePaisa`, `lineTotalPaisa`, timestamps | Original item records and their historical prices. An item row belongs to exactly one trip and must not be overwritten by a later purchase. |
-| `itemAssignments` | `tripId`, `itemId`, `userId`, `allocatedAmountPaisa` | The people responsible for each item and their exact allocation. Each assigned user must be an eligible participant in that trip. |
+| `trips` | `ownerId`, `title`, `storeName`, `tripDate`, `category`, `currency`, `totalPaisa`, `itemCount`, `searchText`, `createdAt`, `updatedAt` | One independent bill per trip. `tripDate` is a date-only `YYYY-MM-DD` value that is never timezone-converted; the total is kept consistent with the items in the same mutation. |
+| `tripPeople` | `tripId`, `role`, `name`, `nameNormalized`, `position`, `userId`, `linkedAt`, timestamps | Everyone the bill is split between. The owner's row always carries the owner's `userId`; other people get a `userId` only once linked. These rows are what grant access. |
+| `tripInvitations` | `tripId`, `personId`, `inviteeUserId`, `invitedByUserId`, `invitedVia`, `status`, `createdAt`, `respondedAt`, `updatedAt` | Requests to link one person to one account: pending, accepted, declined, cancelled or unlinked. |
+| `items` | `tripId`, `position`, `name`, `normalizedName`, `brand`, `variant`, `packSize`, `unit`, `productMatchKey`, `quantityMilli`, `unitPricePaisa`, `lineTotalPaisa`, timestamps | Original item records and their historical prices. An item row belongs to exactly one trip and must not be overwritten by a later purchase. |
+| `itemAssignments` | `tripId`, `itemId`, `personId`, `allocatedAmountPaisa` | The people responsible for each item and their exact allocation. Each assigned person must be on that trip. |
 
 #### Money representation
 
 - Store money as **integer paisa** (100 paisa = Rs. 1.00), for example `Rs. 125.50` as `12550`, rather than using binary floating-point values for money.
 - Parse and validate user-entered price values at the application boundary. Calculate a line total from the entered unit price and quantity, rounding to the nearest paisa using one documented rule before allocation.
-- When a line total does not divide evenly among assigned users, allocate the remaining paisa deterministically (for example, in a stable order of participant IDs) so the allocations add up to the exact line total.
+- When a line total does not divide evenly among the assigned people, the remaining paisa go one each to the assigned people with the lowest bill `position` (the owner first), so the allocations add up to the exact line total and the form preview matches the server.
 - Store or calculate the allocation rows as part of the same mutation that updates the bill. Never trust client-supplied allocation totals without recomputing them on the server.
 - Display values with two decimal places and the `Rs.` prefix. Keep PKR as the only currency in the MVP.
 
@@ -500,12 +523,13 @@ Recommended tables:
 Define indexes in `convex/schema.ts` for the app's actual access patterns. At minimum, plan for:
 
 - `users`: by email (index named `email`, required by Convex Auth) and by normalized username.
-- `trips`: by owner and trip date (and any additional compound index needed for the dashboard/history ordering).
-- `tripParticipants`: by trip + user, by user + status, and by trip + status.
-- `items`: by trip, by normalized item name, and by `productMatchKey` for comparable price-history lookups.
-- `itemAssignments`: by item and by trip + user.
+- `trips`: by owner and trip date.
+- `tripPeople`: by trip + position, by trip + user, and by user (every trip a user can see).
+- `tripInvitations`: by trip + invitee, by person + status, by trip, by invitee + status, and by inviter + status.
+- `items`: by trip + position, and by trip + `productMatchKey` for comparable price-history lookups.
+- `itemAssignments`: by item and by trip + person.
 
-Convex indexes do not automatically provide unique constraints. Enforce unique usernames/contact lookup keys, one active participant relationship per trip/user, and duplicate-invitation behavior in mutations. Check existing records before inserting and handle concurrent duplicate attempts safely.
+Convex indexes do not automatically provide unique constraints. Enforce unique usernames, unique person names per trip, one linked person per trip and account, and duplicate-invitation behavior in mutations. Check existing records before inserting and handle concurrent duplicate attempts safely.
 
 Do not introduce a separate mutable `currentPrice` field or a separate price-history table for the MVP. Price history is derived from immutable-in-other-trips item records. If a user edits an old bill, only that bill's item record changes; no other bill is changed.
 
@@ -513,83 +537,76 @@ Do not introduce a separate mutable `currentPrice` field or a separate price-his
 
 Use Convex's generated typed API and reactive query hooks (`useQuery`) for data that should refresh when the database changes, and mutations (`useMutation`) for writes. Use `undefined`/loading states deliberately and provide useful loading, empty, and error states.
 
-- **Dashboard:** Query a bounded, newest-first list of trips owned by the user and trips for which the user has an accepted participant record. Merge and deduplicate the results by trip ID. Include a clearly defined limit for recent trips.
-- **Trip detail:** Load the trip only after checking that the current user is its owner or an accepted participant. Then load items and assignment rows through trip/item indexes. Return only fields needed by that screen.
-- **Bill history:** Retrieve owned/shared trips from indexed owner/participant relationships. Paginate results instead of collecting an unlimited history. Apply date/category/owned-shared filters in the backend where practical. Title/store search can filter the authorized result set; never perform a global search and display unfiltered records.
-- **Invitation inbox:** Use the `tripParticipants` user + status index to retrieve invitations for the signed-in user. Use the trip + status index for the owner's sent-invitation view.
+- **Dashboard:** Query a bounded, newest-first list of the trips the user can see, through the `tripPeople` user index (owned and linked). Include a clearly defined limit for recent trips (5).
+- **Trip detail:** Load the trip only after checking that the current user is its owner or a linked participant. Then load people, items and assignment rows through trip indexes. Return only fields needed by that screen.
+- **Bill history:** Retrieve owned/shared trips from the indexed `tripPeople` relationships, capped. Return results in pages ("Load more") instead of an unlimited history. Apply search, date, category and owned/shared filters in the backend over the authorized set only; never perform a global search and display unfiltered records.
+- **Invitation inbox:** Use the `tripInvitations` invitee + status index for the signed-in user's received invitations, and the inviter + status index for the owner's sent-invitation view.
 - **Friend resolution:** Perform exact, indexed lookups by normalized username or normalized email. Do not return a list of users or disclose the target's contact details.
 - **Price history:** Build a deterministic `productMatchKey` from normalized name and the relevant brand/variant/pack-size/unit fields. Retrieve matching item candidates using the index, then check trip authorization on the backend **before returning any observation**. Paginate results and never let inaccessible records influence returned counts, price comparisons, or charts. If later data volume makes this query expensive, add a user-scoped/materialized price-history index only after measuring a real performance issue; do not add that denormalization to the MVP.
 - **Search and filtering:** Prefer schema indexes for common filters and exact lookups. Do not query every table with `.collect()` for a dashboard or complete history. Keep result sizes bounded and add pagination for growing histories.
 - **Reactive updates:** Convex subscriptions can keep an open trip or invitation inbox current without manual polling or a separate WebSocket service.
 
-A shared bill contributes a price-history observation only for its owner and accepted participants. The app must never expose unrelated users' purchase records, even though matching item names may exist elsewhere in the database.
+A shared bill contributes a price-history observation only for its owner and linked participants. The app must never expose unrelated users' purchase records, even though matching item names may exist elsewhere in the database.
 
 ### 18.6 Folder Structure
 
-Use a straightforward feature-oriented structure. The exact root (`src/` or project-root `app/`) can follow the repository's existing convention; do not move files unnecessarily if a project has already been initialized.
+The project uses a feature-oriented structure. Business rules (money, validation, normalization, price changes) live in `src/domain/` as pure TypeScript shared by the UI and Convex, rather than in `convex/lib/`, so the form preview and the server run the same code.
 
 ```text
 project-root/
+├── design/
+│   ├── tokens.css                     # every colour, size, radius, shadow, font and motion value
+│   └── fonts.ts
 ├── src/
 │   ├── app/
-│   │   ├── (public)/
-│   │   │   └── page.tsx
-│   │   ├── (auth)/
-│   │   │   ├── sign-in/page.tsx
-│   │   │   └── sign-up/page.tsx
+│   │   ├── (public)/page.tsx          # landing
+│   │   ├── (auth)/sign-in, sign-up
+│   │   ├── (onboarding)/onboarding    # choose a username
 │   │   ├── (app)/
 │   │   │   ├── layout.tsx
-│   │   │   ├── dashboard/page.tsx
-│   │   │   ├── trips/page.tsx
-│   │   │   ├── trips/new/page.tsx
-│   │   │   ├── trips/[tripId]/page.tsx
-│   │   │   ├── trips/[tripId]/edit/page.tsx
-│   │   │   ├── invitations/page.tsx
-│   │   │   ├── price-history/page.tsx
-│   │   │   └── settings/page.tsx
-│   │   ├── layout.tsx
+│   │   │   ├── dashboard/
+│   │   │   ├── trips/                 # Bill History
+│   │   │   ├── trips/new/
+│   │   │   ├── trips/[tripId]/
+│   │   │   ├── trips/[tripId]/edit/
+│   │   │   ├── invitations/
+│   │   │   ├── price-history/
+│   │   │   └── settings/
+│   │   ├── layout.tsx, error.tsx, not-found.tsx
 │   │   └── globals.css
 │   ├── components/
-│   │   ├── providers/convex-client-provider.tsx
-│   │   ├── layout/app-shell.tsx
-│   │   ├── trips/trip-form.tsx
-│   │   ├── trips/item-editor.tsx
-│   │   ├── trips/participant-picker.tsx
-│   │   ├── trips/trip-summary.tsx
-│   │   ├── bills/bill-history-filters.tsx
-│   │   ├── invitations/invitation-list.tsx
-│   │   ├── price-history/price-history-list.tsx
-│   │   └── ui/                       # shadcn/ui components used by the app
-│   └── lib/
-│       ├── utils.ts
-│       └── money-format.ts            # display/format helpers; backend remains authoritative
+│   │   ├── layout/                    # app shell, nav, account gate, page header
+│   │   ├── trips/                     # trip form, item editor, people editor, shares, split summary
+│   │   ├── bills/, dashboard/, invitations/, price-history/, account/, auth/, forms/
+│   │   └── ui/                        # shadcn/ui-style components on Radix
+│   ├── domain/                        # money, validation, normalization, formatting, price changes, chart
+│   ├── lib/
+│   │   ├── db/                        # the only frontend code that talks to Convex
+│   │   ├── auth/                      # the only frontend code that talks to Convex Auth
+│   │   └── utils.ts
+│   └── proxy.ts                       # Convex Auth session handling and route redirects
 ├── convex/
 │   ├── schema.ts
 │   ├── auth.ts                        # Convex Auth: Password provider
 │   ├── auth.config.ts
 │   ├── http.ts                        # Convex Auth HTTP routes
-│   ├── users.ts
-│   ├── trips.ts
-│   ├── invitations.ts
-│   ├── items.ts
-│   ├── priceHistory.ts
+│   ├── users.ts, trips.ts, invitations.ts, items.ts, priceHistory.ts
 │   ├── lib/
 │   │   ├── auth.ts                    # current-user resolution and access checks
-│   │   ├── money.ts                   # authoritative split/rounding calculations
-│   │   └── normalization.ts           # username/contact/item matching helpers
+│   │   ├── access.ts                  # bounded-read caps and accessible-trip listing
+│   │   ├── tripWrite.ts, readModels.ts, errors.ts
 │   └── _generated/                    # generated by Convex; do not hand-edit
-├── public/
+├── patches/                           # patch-package fix for Convex Auth error forwarding
 ├── tests/
-│   ├── money.test.ts
-│   └── permissions.test.ts
+│   ├── unit/                          # domain tests
+│   └── convex/                        # backend tests, including the permission matrix
 ├── .env.example
-├── .gitignore
 ├── package.json
 ├── tsconfig.json
 └── README.md
 ```
 
-Use the file convention required by the installed Next.js major version for the Convex Auth route middleware/proxy (for example, `proxy.ts` or `middleware.ts` where applicable). Remember that route middleware is a navigation/session convenience, **not** the security boundary; Convex queries and mutations must independently enforce authorization.
+Next.js 16 uses `src/proxy.ts` (formerly `middleware.ts`) for the Convex Auth route proxy. Remember that route middleware is a navigation/session convenience, **not** the security boundary; Convex queries and mutations must independently enforce authorization.
 
 `src/app/api/` should not be created unless a real Next.js HTTP endpoint is required. Generated `convex/_generated/` files must be managed by the Convex CLI, not edited manually.
 
@@ -600,8 +617,9 @@ Keep local secrets in `.env.local` and commit only placeholders in `.env.example
 #### Next.js / local `.env.local`
 
 ```dotenv
-# Public application configuration
+# Public application configuration (written by `npx convex dev`)
 NEXT_PUBLIC_CONVEX_URL=https://<your-deployment>.convex.cloud
+NEXT_PUBLIC_CONVEX_SITE_URL=https://<your-deployment>.convex.site
 ```
 
 There are no authentication variables in `.env.local`.
