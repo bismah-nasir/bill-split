@@ -1178,10 +1178,10 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 
 **Verification checklist**
 
-- [ ] `npm run dev` → `http://localhost:3000` shows the landing page in Outfit/Plus Jakarta Sans with token colours, at 360 px and 1280 px.
-- [ ] Adding `className="p-[13px]"`, `style={{}}` or `"#ff0000"` to a component makes `npm run lint` fail (then revert).
-- [ ] `npm run check` passes, and the format tests pass.
-- [ ] Git has an initial commit.
+- [x] `npm run dev` → `http://localhost:3000` shows the landing page in Outfit/Plus Jakarta Sans with token colours, at 360 px and 1280 px.
+- [x] Adding `className="p-[13px]"`, `style={{}}` or `"#ff0000"` to a component makes `npm run lint` fail (then revert).
+- [x] `npm run check` passes, and the format tests pass.
+- [x] Git has an initial commit.
 
 ---
 
@@ -1281,15 +1281,15 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 
 **Verification checklist**
 
-- [ ] Signing up as Alice / `alice@example.com` / `testpass123` (confirmed) leads to `/onboarding`. Choosing `alice` leads to the dashboard showing "Hi, Alice".
-- [ ] The sign-up form blocks an empty field, an invalid email, a 7-character password and a mismatched confirm password with inline messages, without a network request.
-- [ ] Signing up again with `ALICE@example.com` shows "An account with this email already exists. Sign in instead."
-- [ ] A second account trying the username `Alice` sees "That username is taken".
-- [ ] Signing out leads to `/`. Visiting `/dashboard` while signed out redirects to `/sign-in`. Visiting `/sign-in` while signed in redirects to `/dashboard`.
-- [ ] Signing in with `Alice@Example.com` and the right password goes straight to the dashboard, not onboarding. A wrong password shows "Email or password is incorrect."
-- [ ] Reloading the page keeps the user signed in.
-- [ ] The Convex dashboard shows exactly one `users` row per account with `name` and lowercase `email`. No plain-text password appears in any table.
-- [ ] `npm run check` passes.
+- [x] Signing up as Alice / `alice@example.com` / `testpass123` (confirmed) leads to `/onboarding`. Choosing `alice` leads to the dashboard showing "Hi, Alice".
+- [x] The sign-up form blocks an empty field, an invalid email, a 7-character password and a mismatched confirm password with inline messages, without a network request.
+- [x] Signing up again with `ALICE@example.com` shows "An account with this email already exists. Sign in instead."
+- [x] A second account trying the username `Alice` sees "That username is taken".
+- [x] Signing out leads to `/`. Visiting `/dashboard` while signed out redirects to `/sign-in`. Visiting `/sign-in` while signed in redirects to `/dashboard`.
+- [x] Signing in with `Alice@Example.com` and the right password goes straight to the dashboard, not onboarding. A wrong password shows "Email or password is incorrect."
+- [x] Reloading the page keeps the user signed in.
+- [x] The Convex dashboard shows exactly one `users` row per account with `name` and lowercase `email`. No plain-text password appears in any table.
+- [x] `npm run check` passes.
 
 ---
 
@@ -1323,10 +1323,10 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 
 **Verification checklist**
 
-- [ ] Changing the name updates Settings, the dashboard greeting and the user menu without a reload.
-- [ ] Changing the username works, and a taken name is rejected.
-- [ ] The email is shown read-only.
-- [ ] `npm run check` passes.
+- [x] Changing the name updates Settings, the dashboard greeting and the user menu without a reload.
+- [x] Changing the username works, and a taken name is rejected.
+- [x] The email is shown read-only.
+- [x] `npm run check` passes.
 
 ---
 
@@ -1412,13 +1412,13 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 
 **Verification checklist**
 
-- [ ] Alice creates "Imtiaz Grocery" with 3 items (one with quantity 1.5 and price 333.33). The line totals and total match a hand calculation, the review shows the shares reconciled, and saving opens the details page.
-- [ ] Saving with an empty title, an item without a price or a quantity of 0 is blocked with inline messages.
-- [ ] Turning the network off (DevTools → Offline) and pressing Save shows the retry Alert, and the form keeps all values. Going back online and retrying succeeds.
-- [ ] The dashboard lists the bill, newest first, max 5.
-- [ ] Carol (a different account) opening Alice's `/trips/<id>` URL sees "doesn't exist or you don't have access". Her dashboard is empty.
-- [ ] The layout works at 360 px (item cards stack, sticky footer visible).
-- [ ] `npm run check` passes.
+- [x] Alice creates "Imtiaz Grocery" with 3 items (one with quantity 1.5 and price 333.33). The line totals and total match a hand calculation, the review shows the shares reconciled, and saving opens the details page.
+- [x] Saving with an empty title, an item without a price or a quantity of 0 is blocked with inline messages.
+- [x] Turning the network off (DevTools → Offline) and pressing Save shows the retry Alert, and the form keeps all values. Going back online and retrying succeeds.
+- [x] The dashboard lists the bill, newest first, max 5.
+- [x] Carol (a different account) opening Alice's `/trips/<id>` URL sees "doesn't exist or you don't have access". Her dashboard is empty.
+- [x] The layout works at 360 px (item cards stack, sticky footer visible).
+- [x] `npm run check` passes.
 
 ---
 
@@ -1461,11 +1461,11 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 
 **Verification checklist**
 
-- [ ] Alice edits a bill (changes a price, adds one item, removes another), saves, and the details page shows the new values and the reconciled shares.
-- [ ] A second bill with the same item keeps its original price.
-- [ ] Deleting asks for confirmation, then the bill disappears from the dashboard. Its URL now shows the no-access state.
-- [ ] Carol calling the `update` or `remove` mutations directly (for example from the Convex dashboard's function runner, acting as Carol, or with a temporary test button) fails.
-- [ ] `npm run check` passes.
+- [x] Alice edits a bill (changes a price, adds one item, removes another), saves, and the details page shows the new values and the reconciled shares.
+- [x] A second bill with the same item keeps its original price.
+- [x] Deleting asks for confirmation, then the bill disappears from the dashboard. Its URL now shows the no-access state.
+- [x] Carol calling the `update` or `remove` mutations directly (for example from the Convex dashboard's function runner, acting as Carol, or with a temporary test button) fails.
+- [x] `npm run check` passes.
 
 ---
 
@@ -1519,13 +1519,13 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 
 **Verification checklist**
 
-- [ ] Alice creates "Dinner" with Ben and Sara (no accounts): Pizza Rs. 5,000 → Everyone; Drink Rs. 900 → Ben; Rice Rs. 1,200 → Alice and Sara. The preview, review and saved bill all show Alice 2,266.67, Ben 2,566.67, Sara 2,266.66, Σ = Rs. 7,100.00 ✓.
-- [ ] At 360 px, the split summary at the top of the saved bill fits on one screen and reads clearly as a screenshot.
-- [ ] Adding "ben" when "Ben" is already on the bill is rejected inline.
-- [ ] Editing: removing Sara asks for confirmation first. Then Rice is fully on Alice and Pizza splits between Alice and Ben. The totals still reconcile.
-- [ ] Renaming Ben to "Ben D." changes no amount.
-- [ ] A solo bill still shows "Paid by you" with no People rows and no picker.
-- [ ] `npm run check` passes.
+- [x] Alice creates "Dinner" with Ben and Sara (no accounts): Pizza Rs. 5,000 → Everyone; Drink Rs. 900 → Ben; Rice Rs. 1,200 → Alice and Sara. The preview, review and saved bill all show Alice 2,266.67, Ben 2,566.67, Sara 2,266.66, Σ = Rs. 7,100.00 ✓.
+- [x] At 360 px, the split summary at the top of the saved bill fits on one screen and reads clearly as a screenshot.
+- [x] Adding "ben" when "Ben" is already on the bill is rejected inline.
+- [x] Editing: removing Sara asks for confirmation first. Then Rice is fully on Alice and Pizza splits between Alice and Ben. The totals still reconcile.
+- [x] Renaming Ben to "Ben D." changes no amount.
+- [x] A solo bill still shows "Paid by you" with no People rows and no picker.
+- [x] `npm run check` passes.
 
 ---
 
@@ -1605,14 +1605,14 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 
 **Verification checklist (accounts: Alice, Bob, Carol, and Ben Doe with username `ben_doe`)**
 
-- [ ] Alice's "Dinner" bill from Phase 5 has Ben and Sara (no accounts). Ben signs up as "Ben Doe" with the username `ben_doe`. The bill does **not** appear for him by itself.
-- [ ] Alice invites @ben_doe for "Ben". Ben's Invites badge shows 1 without a reload, and the invitation reads "as Ben". Before accepting, opening the bill URL shows the no-access state.
-- [ ] Ben accepts and lands on the bill. It shows "Ben (@ben_doe)", and his card is "Your share" with Rs. 2,566.67, exactly as before. He sees no Edit/Delete/Invite, the header says "Shared by @alice", and his dashboard shows the bill with a **Shared** badge. Alice sees "Ben (@ben_doe)" and Sent shows "Accepted". "Ben Doe" appears nowhere on Alice's screens.
-- [ ] Alice invites Bob by email as **Someone new** named "Bob". Bob declines. Alice sees "Declined", Bob has no access, and "Bob" stays on the bill.
-- [ ] Alice invites @carol for Sara, then cancels. Carol's pending invitation disappears.
-- [ ] Alice unlinks Ben after confirming. Ben's open bill page switches to the no-access state live and the bill leaves his dashboard. The shares on Alice's bill are unchanged.
-- [ ] Inviting `nobody@example.com` (no account) shows the generic "No account matches that email" message.
-- [ ] `npm run check` passes.
+- [x] Alice's "Dinner" bill from Phase 5 has Ben and Sara (no accounts). Ben signs up as "Ben Doe" with the username `ben_doe`. The bill does **not** appear for him by itself.
+- [x] Alice invites @ben_doe for "Ben". Ben's Invites badge shows 1 without a reload, and the invitation reads "as Ben". Before accepting, opening the bill URL shows the no-access state.
+- [x] Ben accepts and lands on the bill. It shows "Ben (@ben_doe)", and his card is "Your share" with Rs. 2,566.67, exactly as before. He sees no Edit/Delete/Invite, the header says "Shared by @alice", and his dashboard shows the bill with a **Shared** badge. Alice sees "Ben (@ben_doe)" and Sent shows "Accepted". "Ben Doe" appears nowhere on Alice's screens.
+- [x] Alice invites Bob by email as **Someone new** named "Bob". Bob declines. Alice sees "Declined", Bob has no access, and "Bob" stays on the bill.
+- [x] Alice invites @carol for Sara, then cancels. Carol's pending invitation disappears.
+- [x] Alice unlinks Ben after confirming. Ben's open bill page switches to the no-access state live and the bill leaves his dashboard. The shares on Alice's bill are unchanged.
+- [x] Inviting `nobody@example.com` (no account) shows the generic "No account matches that email" message.
+- [x] `npm run check` passes.
 
 ---
 
@@ -1657,11 +1657,11 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 
 **Verification checklist**
 
-- [ ] With around 8 bills across categories and dates (some shared), every filter, combination and sort gives the expected list.
-- [ ] Reloading or using back navigation keeps the filters (URL).
-- [ ] Opening a result shows the full bill. A shared one is read-only.
-- [ ] The empty states show correctly (a new account vs. no matches).
-- [ ] `npm run check` passes.
+- [x] With around 8 bills across categories and dates (some shared), every filter, combination and sort gives the expected list.
+- [x] Reloading or using back navigation keeps the filters (URL).
+- [x] Opening a result shows the full bill. A shared one is read-only.
+- [x] The empty states show correctly (a new account vs. no matches).
+- [x] `npm run check` passes.
 
 ---
 
@@ -1717,11 +1717,11 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 
 **Verification checklist**
 
-- [ ] Alice records the same product across 3 bills on different dates and stores. Price History shows all 3 in date order with correct changes and links that open the bills.
-- [ ] A different pack size appears as a separate product under "Other variants".
-- [ ] Bob only sees observations from bills shared with him and his own. Carol sees none of Alice's.
-- [ ] Deleting a bill removes its observation live.
-- [ ] `npm run check` passes.
+- [x] Alice records the same product across 3 bills on different dates and stores. Price History shows all 3 in date order with correct changes and links that open the bills.
+- [x] A different pack size appears as a separate product under "Other variants".
+- [x] Bob only sees observations from bills shared with him and his own. Carol sees none of Alice's.
+- [x] Deleting a bill removes its observation live.
+- [x] `npm run check` passes.
 
 ---
 
@@ -1754,11 +1754,11 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 
 **Verification checklist**
 
-- [ ] Typing "coo" in a new bill suggests "Cooking Oil · Dalda · 1l". Selecting it fills the details, and the price stays empty with the last-price hint.
-- [ ] Choosing "Use as new item" keeps only the typed name.
-- [ ] Recording via a suggestion makes that bill appear in the **same** Price History product.
-- [ ] The combobox works with the keyboard only.
-- [ ] `npm run check` passes.
+- [x] Typing "coo" in a new bill suggests "Cooking Oil · Dalda · 1l". Selecting it fills the details, and the price stays empty with the last-price hint.
+- [x] Choosing "Use as new item" keeps only the typed name.
+- [x] Recording via a suggestion makes that bill appear in the **same** Price History product.
+- [x] The combobox works with the keyboard only.
+- [x] `npm run check` passes.
 
 ---
 
@@ -1794,9 +1794,9 @@ Every phase lists: **Goal**, **Backend**, **Domain**, **UI**, **Tests**, **Verif
 
 **Verification checklist**
 
-- [ ] The figures match a manual sum for October with mixed solo and shared bills, for both Alice and Bob.
-- [ ] Switching months updates both tiles. The labels never mix meanings.
-- [ ] `npm run check` passes.
+- [x] The figures match a manual sum for October with mixed solo and shared bills, for both Alice and Bob.
+- [x] Switching months updates both tiles. The labels never mix meanings.
+- [x] `npm run check` passes.
 
 ---
 
