@@ -89,6 +89,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "node_modules/**",
     "convex/_generated/**",
+    "video/**",
   ]),
 ]);
 

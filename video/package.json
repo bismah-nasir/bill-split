@@ -1,0 +1,26 @@
+{
+  "name": "billsplit-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Product walkthrough video for BillSplit, built with Remotion",
+  "scripts": {
+    "audio": "node scripts/generate-audio.mjs",
+    "studio": "remotion studio",
+    "render": "remotion render BillSplitWalkthrough out/billsplit-walkthrough.mp4",
+    "still": "remotion still BillSplitWalkthrough out/still.png",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.537",
+    "@remotion/google-fonts": "4.0.537",
+    "@remotion/transitions": "4.0.537",
+    "lucide-react": "^1.58.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "remotion": "4.0.537"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "typescript": "^5"
+  }
+}
