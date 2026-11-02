@@ -1,6 +1,11 @@
 # BillSplit walkthrough video
 
-A ~76-second, 1920×1080 product walkthrough of BillSplit, built with [Remotion](https://www.remotion.dev). Every screen is rebuilt in React with the app's design tokens (`design/tokens.css`) and the same demo data as the README screenshots.
+A ~76-second, 1920×1080 product walkthrough of BillSplit, plus a poster (thumbnail) image, built with [Remotion](https://www.remotion.dev). Every screen is rebuilt in React with the app's design tokens (`design/tokens.css`) and the same demo data as the README screenshots.
+
+The rendered files are committed, so you can watch them without installing anything:
+
+- Video: [`out/billsplit-walkthrough.mp4`](out/billsplit-walkthrough.mp4)
+- Poster: [`out/poster.jpg`](out/poster.jpg)
 
 ## Flow
 
@@ -27,20 +32,25 @@ cd video
 npm install
 npm run studio   # preview and scrub in Remotion Studio
 npm run render   # writes out/billsplit-walkthrough.mp4
+npm run poster   # writes out/poster.jpg
 ```
+
+If another dev server already uses port 3000, add a free port, e.g. `npm run poster -- --port=3123`.
 
 ## Layout
 
 ```text
 src/
   index.ts         registerRoot
-  Root.tsx         the BillSplitWalkthrough composition (30 fps, 1920×1080)
+  Root.tsx         the BillSplitWalkthrough composition (30 fps, 1920×1080) and the BillSplitPoster still
   Video.tsx        scene order, durations and transitions
   theme.ts         colours, fonts, radii and type ramp from design/tokens.css
   anim.ts          typing, easing and count-up helpers
   data.ts          demo bills, items, shares and price records
   ui/              app primitives, device frames, cursor and captions
   scenes/          onboarding.tsx, desktop.tsx, mobile.tsx
+  poster/          Poster.tsx, Logo.tsx and theme.ts for the poster
+public/poster/     screenshots used by the poster
 ```
 
 This folder is a separate npm package. The app's `tsconfig.json` and ESLint config ignore it.
